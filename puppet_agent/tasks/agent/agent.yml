@@ -1,0 +1,12 @@
+---
+# tasks file for manage puppet-agent
+# Instalacion y configuracion de l agente
+#
+#
+- name: Puppet-agent install
+  include_tasks: "packages/install-{{ ansible_system }}.yml"
+  when: puppet_agent_install
+
+- name: Puppet-agent configuration
+  include_tasks: "configuration.yml"
+  when: puppet_agent_configuration

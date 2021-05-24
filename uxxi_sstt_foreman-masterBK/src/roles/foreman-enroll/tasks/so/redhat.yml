@@ -1,0 +1,236 @@
+---
+
+  - debug:
+      msg:
+      - "Distribution {{ hostvars[inventory_hostname].ansible_distribution }}"
+      - "Version {{ hostvars[inventory_hostname].ansible_distribution_version }}"
+
+
+  - name: Check y conexion foreman 8140 443 ARSYS
+    when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+    wait_for:
+      host: serverforeman.uxxi.net
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: no
+    with_items:
+      - 8140
+
+  - name: Check y conexion foreman 8140 443 UXXI
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    wait_for:
+      host: H16110.redocu.lan
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: no
+    with_items:
+      - 8140
+
+  - name: Check y conexion foreman 8140 443 AWS
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    wait_for:
+      host: serverforeman.uxxi.net
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: no
+    with_items:
+      - 8140
+
+  - name: Comprobar si existe el environment
+    connection: local
+    stat:
+      path: "/etc/puppetlabs/code/environments/{{ entorno }}"
+    register: envi_path
+    when: ansible_distribution == "RedHat"
+
+  - name: Crear el environment
+    connection: local
+    file:
+      path: "{{ item }}"
+      state: directory
+    with_items:
+    - /etc/puppetlabs/code/environments/{{ entorno }}
+    - /etc/puppetlabs/code/environments/{{ entorno }}/data
+    - /etc/puppetlabs/code/environments/{{ entorno }}/manifest
+    - /etc/puppetlabs/code/environments/{{ entorno }}/modules
+    when: envi_path.stat.exists == False and ansible_distribution == "RedHat"
+
+  - name: COPY MODULES
+    connection: local
+    copy:
+      src: /etc/puppetlabs/code/environments/Produccion/modules
+      dest: "{{ item }}"
+    with_items:
+    - /etc/puppetlabs/code/environments/{{ entorno }}/
+    when: envi_path.stat.exists == False and ansible_distribution == "OracleLinux"
+ 
+  
+  - name: ADD REDHAT REPO
+    copy:
+      src: templates/uxxic7.repo
+      dest: /etc/yum.repos.d
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+
+  - name: ADD REPO INSTALL
+    copy:
+      src: templates/install.repo
+      dest: /etc/yum.repos.d
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+ 
+  - name: SINCRONIZAR HORA
+    yum:
+      name: "{{ software_install_6.packages}}"
+      state: present
+
+  - name: INSTALANDO NTP
+    wait_for:
+      timeout: 10 
+
+  - name: AJUSTE DE HORA
+    shell: /usr/sbin/ntpdate 2.europe.pool.ntp.org
+    ignore_errors: yes
+  
+  - name: EDIT YUN.CONF
+    lineinfile:
+      path: /etc/yum.conf
+      state: present
+      insertafter: '^installonly_limit'
+      line: 'exclude=rhn-client-tools-2.0.2-24.0.7.el7.x86_64 rhn*'
+
+
+  - name: INSTALL PACKAGES 7 PUPPET
+    when: ansible_facts['distribution'] == "RedHat"
+    yum:
+      name: "{{ software_install_7.packages}}"
+      state: present
+      disable_gpg_check: yes 
+    tags:
+      - yum
+
+  - name: STOP PUPPET
+    service:
+      name: puppet
+      state: stopped
+
+  - name: EDIT PUPPET 172.23-21
+    #when: ansible_facts['distribution'] == "RedHat"
+    when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16') 
+    template:
+      src: templates/172.23-21/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags: 
+      - templates
+  
+  - name: EDIT PUPPET 172.16-29
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16') 
+    template:
+      src: templates/172.16-29/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+  
+  - name: EDIT PUPPET 172.30-31
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    template:
+      src: templates/172.30-31/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+    
+  - name: REINICIO PUPPET
+    service:
+      name: puppet
+      state: started
+      enabled: yes
+
+
+  - name: INSTALL PACKAGES 4 subscription-manager
+    when: ansible_facts['distribution'] == "RedHat"
+    yum:
+      name: "{{ software_install_4.packages}}"
+      state: present
+    tags:
+      - yum
+
+  - name: KATELLO RPM DESCARGAR 172.23-21
+    when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+    yum:
+      name: http://serverforeman.uxxi.net/pub/katello-ca-consumer-latest.noarch.rpm
+      state: present
+  
+  - name: KATELLO RPM DESCARGAR 172.16-29
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    yum:
+      name: http://H16110.redocu.lan/pub/katello-ca-consumer-latest.noarch.rpm
+      state: present
+
+  - name: KATELLO RPM DESCARGAR 172.30-31
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    yum:
+      name: http://serverforeman.uxxi.net/pub/katello-ca-consumer-latest.noarch.rpm
+      state: present
+
+  - name: EJECUTA PUPPET AGENT
+    shell: /opt/puppetlabs/bin/puppet agent -t
+
+  - name: SM REGISTER
+    when: ansible_facts['distribution'] == "RedHat"
+    redhat_subscription:
+      state: present
+      activationkey: RedHat7
+      org_id: UXXI
+
+  - name: INSTALL PACKAGES 5 KATELLO-TOOLS 
+    when: ansible_facts['distribution'] == "RedHat"
+    yum:
+      name: "{{ software_install_5.packages}}"
+      state: present
+      disable_gpg_check: yes 
+    tags:
+      - yum
+
+  - name: BORRAR INSTALL REPO
+    file:
+      path: /etc/yum.repos.d/install.repo
+      state: absent
+
+  - name: REINICIO PUPPET
+    service:
+      name: puppet
+      state: restarted
+
+  - name: REINICIO GOFERD
+    service:
+      name: goferd.service
+      state: restarted
+  
+  - name: YUM CLEAN
+    shell:
+      yum clean all
+
+  - name: YUM REPOLIST
+    shell:
+      yum repolist
+
+  #- name: SYNC
+  #  include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/sync.yml
+

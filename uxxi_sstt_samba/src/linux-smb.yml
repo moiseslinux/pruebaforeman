@@ -1,0 +1,13 @@
+---
+
+- hosts: all 
+  vars_prompt:
+    - name: "confirm"
+      prompt: Vas a agregar una nueva carpeta 
+      private: no
+      default: "no"  
+  become: yes
+  become_user: root
+  roles:
+    - { role: roles/linux-smb-enroll, tags: ['linux-smb'] }
+    

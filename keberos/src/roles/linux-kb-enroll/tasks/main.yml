@@ -1,0 +1,50 @@
+---
+   
+
+     - name: krb5keytab
+       when: ansible_os_family == 'RedHat'
+       shell: mv /etc/krb5.keytab  /etc/krb5keytab
+     
+     #- name: net ads
+     #  shell: net ads leave -U "{{ dc.admin.user }}@{{ dc.name }}"
+
+     - name: borrar *.tdb
+       when: ansible_os_family == 'RedHat'
+       shell:  rm -f /var/lib/samba/*.tdb
+
+     - name: borrar ldb
+       when: ansible_os_family == 'RedHat'
+       shell: rm -f /var/lib/samba/group_mapping.ldb
+     
+     - name: net cache flush
+       when: ansible_os_family == 'RedHat'
+       shell: net cache flush
+
+     - name: kdestroy
+       when: ansible_os_family == 'RedHat'
+       shell: kdestroy
+     
+     - name: home
+       when: ansible_os_family == 'RedHat'
+       shell: rm -rf /home/REDOCU/*
+       ####################################################################
+
+     - name:  MACHINE TO DOMAIN
+       when: ansible_os_family == 'RedHat'
+       shell: echo '{{ dc.admin.pass }}' | kinit "{{ dc.admin.user }}@{{ dc.name }}"
+
+     - name:  MACHINE TO DOMAIN
+       when: ansible_os_family == 'RedHat'
+       shell: echo '{{ dc.admin.pass }}' |net ads join -U "{{ dc.admin.user }}@{{ dc.name }}"
+
+     - name: MAKE SURE SERVICES ARE RUNNING
+       when: ansible_os_family == 'RedHat'
+       systemd:
+         state: restarted
+         name: "{{ item }}"
+         enabled: yes
+       loop: "{{ services.common }}"   
+
+
+
+

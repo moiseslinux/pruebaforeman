@@ -1,0 +1,9 @@
+---
+destory: 
+  - virsh net-destroy default
+autostart: 
+  - virsh net-autostart default --disable
+stop: 
+  - systemctl stop libvirtd
+disabled: 
+  - systemctl disable libvirtd.service

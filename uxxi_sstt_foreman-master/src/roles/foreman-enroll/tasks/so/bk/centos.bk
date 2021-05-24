@@ -1,0 +1,85 @@
+---
+  - name: SINCRONIZAR HORA
+    when: ansible_facts['distribution'] == "CentOS"
+    yum:
+      name: ntp
+      state: present
+
+  - name: AJUSTE DE HORA
+    when: ansible_facts['distribution'] == "CentOS"
+    shell: /usr/sbin/ntpdate   130.206.3.166    
+ 
+  - name: EDIT C7 REPO
+    copy:
+      src: templates/uxxic7.repo
+      dest: /etc/yum.repos.d
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+
+  - name: INSTALL PACKAGES 4 subscription-manager
+    when: ansible_facts['distribution'] == "CentOS"
+    yum:
+      name: "{{ software_install_4.packages}}"
+      state: present
+    tags:
+      - yum
+
+  - name: KATELLO RPM DESCARGAR 
+    when: ansible_facts['distribution'] == "CentOS"
+    yum:
+      name: http://serverforeman.uxxi.net/pub/katello-ca-consumer-latest.noarch.rpm
+      state: present
+
+
+  - name: SM REGISTER
+    when: ansible_facts['distribution'] == "CentOS"
+    redhat_subscription:
+      state: present
+      activationkey: C7
+      org_id: UXXI
+
+  - name: INSTALL PACKAGES 5 KATELLO-TOOLS PUPPET
+    when: ansible_facts['distribution'] == "CentOS"
+    yum:
+      name: "{{ software_install_5.packages}}"
+      state: present
+      disable_gpg_check: yes 
+    tags:
+      - yum
+
+  - name: STOP DE PUPPET
+    shell: /opt/puppetlabs/bin/puppet resource service puppet ensure=stopped enable=true
+
+  - name: START DE PUEPPET
+    shell: /opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true
+
+  - name: EDIT PUPPET
+    when: ansible_facts['distribution'] == "CentOS"
+    template:
+      src: templates/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags: 
+      - templates
+ 
+  - name: REINICIO PUPPET
+    service:
+      name: puppet
+      state: restarted
+
+  - name: REINICIO GOFERD
+    service:
+      name: goferd.service
+      state: restarted
+  
+  - name: YUM CLEAN
+    shell:
+      yum clean all
+
+  - name: YUM REPOLIST
+    shell:
+      yum repolist
+

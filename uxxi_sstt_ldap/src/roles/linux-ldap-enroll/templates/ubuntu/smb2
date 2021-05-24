@@ -1,0 +1,27 @@
+[global]
+   workgroup = REDOCU
+   realm = REDOCU.LAN
+   security = ads
+   idmap config * : backend = tdb
+   idmap config * : range = 3000-7999
+   idmap config REDOCU : backend = rid
+   idmap config REDOCU : range = 10000-999999
+   template homedir = /home/%U
+   template shell = /bin/bash
+   winbind use default domain = true
+   winbind offline logon = false
+[homes]
+        comment = Home Directories
+        valid users = %S, %D%w%S
+        browseable = No
+        read only = No
+        inherit acls = Yes
+
+[printers]
+        comment = All Printers
+        path = /var/tmp
+        printable = Yes
+        create mask = 0600
+        browseable = No
+
+

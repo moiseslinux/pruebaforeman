@@ -1,0 +1,12 @@
+---
+
+authorized_key_list_all: "{{ authorized_key_list + authorized_key_list_host + authorized_key_list_group }}"
+authorized_key_list:
+  - name: root
+    authorized_keys:
+      - key: "{{ lookup('file', '~foreman-proxy/.ssh/id_rsa_foreman_proxy.pub') }}"
+      #- key: "{{ lookup('file', '/home/john/.ssh/id_rsa.pub') }}"
+        state: present 
+  #- name: (usuario remoto)
+  #  authorized_keys:
+  #    - key: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"

@@ -1,0 +1,20 @@
+---
+  - name: Centos
+    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/centos.yml
+    when: ansible_facts['distribution'] == 'CentOS'
+
+  - name: Oracle
+    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/oracle.yml
+    when: ansible_facts['distribution']  == 'OracleLinux'
+
+  - name: RedHat
+    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/redhat.yml
+    when: ansible_facts['distribution']  == 'RedHat'
+
+  - name: Ubuntu
+    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/ubuntu.yml
+    when: ansible_facts['distribution']  == 'Ubuntu'
+   
+  - name: Amazon
+    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/amazon.yml
+    when: ansible_facts['distribution']  == 'Amazon'

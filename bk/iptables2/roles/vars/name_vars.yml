@@ -1,0 +1,6 @@
+edittcp: "porttcp:"
+editudp: "portudp:"
+java: "firewall_allowed_JAVA_ports: "
+java2: "firewall_allowed_JAVA_ports2: "
+PortJava: "firewall_allowed_JAVA_ports: 68,77,900,78"
+java1: "java1"

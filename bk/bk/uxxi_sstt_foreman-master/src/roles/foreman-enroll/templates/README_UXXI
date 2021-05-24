@@ -1,0 +1,12 @@
+Por motivos de las actualizaciones y el bastionado se mueve todos los (.repo) a la carpeta repo, solo se dejan los repositorios de UXXI, si necesitas trabajar con alguno de los repositorios que están dentro de la carpeta repo o que sea externo después de usarlo se debe deshabilitar o borrar ya que puede traer problema a la hora de la actualización.
+
+Se recomienda copiar desde la carpeta (/etc/yum.repos.d/repo) a la ruta de (/etc/yum.repos.d/)
+
+Ejemplo: cp -p epel.repo.rpmnew ../
+
+
+
+
+
+Gracias.
+

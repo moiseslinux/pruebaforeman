@@ -1,0 +1,38 @@
+---
+- name: Ensure goferd service is started/restarted and enabled
+  systemd:
+    name: goferd
+    state: restarted
+    enabled: True
+    masked: False
+    daemon_reload: True
+  listen: start_restart_goferd
+
+- name: Ensure goferd service is stopped and disabled
+  systemd:
+    name: goferd
+    state: stopped
+    enabled: False
+    masked: False
+    daemon_reload: True
+  listen: stop_disable_goferd
+
+- name: Ensure insights-client is started/restarted and enabled
+  systemd:
+    name: insights-client
+    state: restarted
+    enabled: True
+    masked: False
+    daemon_reload: True
+  listen: start_restart_insights
+
+- name: Ensure insights-client is stopped and disabled
+  systemd:
+    name: insights-client
+    state: stopped
+    enabled: False
+    masked: False
+    daemon_reload: True
+  listen: stop_disable_insights
+
+...

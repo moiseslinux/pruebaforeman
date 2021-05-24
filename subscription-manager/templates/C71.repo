@@ -1,0 +1,18 @@
+[Centos_base]
+name=base
+baseurl=http://h16113.ocuarsys/pulp/repos/UXXI/Library/custom/CENTOS7/C7_Base/ 
+gpgkey=
+gpgcheck=0
+enabled=0
+[Centos_extras]
+name=extras
+baseurl=http://h16113.ocuarsys/pulp/repos/UXXI/Library/custom/CENTOS7/C7_Extras/
+gpgkey=
+gpgcheck=0
+enabled=0
+[Centos_updates]
+name=updates
+baseurl= http://h16113.ocuarsys/pulp/repos/UXXI/Library/custom/CENTOS7/C7_Updates/
+gpgkey=
+gpgcheck=0
+enabled=0

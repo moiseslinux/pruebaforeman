@@ -1,0 +1,71 @@
+---
+
+#- hosts: all
+#  tasks:
+
+     - name: debug print all interface ipv4 data
+       when: "{{ hostvars[ansible_fqdn]['ansible_'~item]['ipv4'] is defined }}"
+       debug:
+         msg="{{ hostvars[ansible_fqdn]['ansible_'~item]['ipv4'] | pprint }}"
+       with_items:
+         - "{{ ansible_interfaces | map('replace', '-','_') | list }}"
+#    - name: define traditional ethernet facts
+#      set_fact:
+#        ansible_eth: "{% set ansible_eth = ansible_eth|default([]) + [hostvars[inventory_hostname]['ansible_' + item]] %}{{ ansible_eth|list }}"
+#      when: hostvars[inventory_hostname]['ansible_' + item]['type'] == 'ether'
+#      with_items:
+#        - "{{ hostvars[inventory_hostname]['ansible_interfaces'] }}"
+#      register: pp
+    
+     - name: Backup interfaces
+       shell: cp /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }} /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}-`date --iso`.bk
+    
+    
+     - name: DNS1 ifcfg
+       lineinfile:
+         path: /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}
+         #state: present
+         regexp: "DNS1=172.23.21.2"
+         line: "DNS1=172.23.21.139"
+
+     - name: DNS2 ifcfg
+       lineinfile:
+         path: /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}
+         #state: present
+         regexp: "DNS2=172.23.21.62"
+         line: "DNS2=172.23.21.138"
+         backup: true
+
+     - name: Backup interfaces
+       shell: cp /etc/resolv.conf /etc/resolv.conf-`date --iso`.bk
+
+     - name: resolv
+       lineinfile:
+         path: /etc/resolv.conf
+         regexp: "nameserver 172.23.21.62"
+         line: "nameserver 172.23.21.138"
+         backup: true
+
+     - name: resolv1
+       lineinfile:
+         path: /etc/resolv.conf
+         regexp: "nameserver 172.23.21.2"
+         line: "nameserver 172.23.21.139"
+    
+     - name: UNION MACHINE TO DOMAIN
+       shell: echo '{{ dc.admin.pass }}' | kinit "{{ dc.admin.user }}@{{ dc.name }}"
+
+     - name: UNION MACHINE TO DOMAIN
+       shell: echo '{{ dc.admin.pass }}' |net ads join -U "{{ dc.admin.user }}@{{ dc.name }}"
+
+     - name: MAKE SURE SERVICES ARE RUNNING
+       systemd:
+         state: restarted
+         name: "{{ item }}"
+         enabled: yes
+       loop: "{{ services.common }}"   
+
+
+
+
+##ip link show | grep mode | sed 's/://g' | awk '{print $1,$2}'

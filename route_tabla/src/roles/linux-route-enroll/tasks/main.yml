@@ -1,0 +1,37 @@
+---
+- hosts: all
+  #gather_facts: False es obligado para que pueda ver las variable de fact
+  #vars_prompt:
+  #  - name: ip
+  #    prompt: "Ingrese la ip"
+  #  - name: gw
+  #    prompt: "Ingrese la gateway"
+
+  tasks:
+  #  - debug:
+  #      msg: "La ip: {{ ip }}"
+  #  - debug:
+  #      msg: "El gateway: {{ gw }}"
+
+    - name: Backup interfaces route-{{ ansible_default_ipv4.interface }}
+      shell: cp /etc/sysconfig/network-scripts/route-{{ ansible_default_ipv4.interface }} /etc/sysconfig/network-scripts/route-{{ ansible_default_ipv4.interface }}-`date --iso`.bk
+     
+    - name: Edit route-{{ ansible_default_ipv4.interface }}
+      lineinfile:
+        path: /etc/sysconfig/network-scripts/route-{{ ansible_default_ipv4.interface }}
+        state: present
+        line: "{{ dest }} via {{ gatw}}  dev {{ ansible_default_ipv4.interface }} "
+        backup: true
+    
+    #- name: Edit route-{{ ansible_default_ipv4.interface }}
+    #  lineinfile:
+    #    path: /etc/sysconfig/network-scripts/route-{{ ansible_default_ipv4.interface }}
+    #    state: present
+    #    line: "{{ ip }}/{{ ansible_default_ipv4.netmask }} via {{ gw }}  dev {{ ansible_default_ipv4.interface }} "
+    #    backup: true
+    #- name: Configuracion route 
+    #  shell: |
+    #     route add -host {{ ip }} via {{ gw }} dev {{ ansible_default_ipv4.interface }}
+    - name: Configuracion route 
+      shell: |
+         route add -host {{ dest }} via {{ gatw }} dev {{ ansible_default_ipv4.interface }}

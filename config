@@ -1,0 +1,4 @@
+Host git.uxxi.net:7999
+ Hostname git.ocu.es
+ IdentityFile ~/.ssh/id_bitbucket
+

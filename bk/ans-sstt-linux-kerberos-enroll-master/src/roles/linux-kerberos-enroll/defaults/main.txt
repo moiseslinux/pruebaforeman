@@ -1,0 +1,58 @@
+Vault password:
+    - "samba"
+    - "samba-winbind"
+# Variables del Dominio
+dc:
+  name: REDOCU.LAN
+  servers:
+    - 172.16.21.7 h15256.redocu.lan
+    - 172.16.21.2 h15258.redocu.lan
+  princs:
+    root/admin: kdc2019
+  admin:
+    user: intlinuxldap
+    pass: UYG57ygf492Dh!
+  nameserver_arsys:
+    - nameserver 172.23.21.2
+    - nameserver 172.23.21.62
+  nameserver_uxxi:
+    - nameserver 172.16.21.8
+    - nameserver 172.16.21.7
+    - nameserver 172.16.20.2
+  nameserver_aws:
+    - nameserver 172.16.21.8
+    - nameserver 172.23.21.2
+    - nameserver 172.16.21.7
+    - nameserver 172.23.21.62
+    - nameserver 172.16.20.2
+  machinearsys:
+    uxxildaparsys.redocu.lan
+  machineuxxiaws:
+    uxxildap.redocu.lan
+  smblines:
+    - idmap gid = 10000-20000
+    - idmap uid = 10000-20000
+    - kerberos method = secrets and keytab
+    - realm = REDOCU.LAN
+    - template homedir = /home/%D/%U
+    - template shell = /bin/bash
+    - winbind offline logon = yes
+    - winbind refresh tickets = yes
+    - winbind use default domain = yes
+  sudoerslines:
+    - "%o_sertec       ALL=(ALL)       NOPASSWD: ALL"
+    - "%o_uxxi-mo ALL=(ALL) NOPASSWD: /bin/su - moodle"
+    - "%o_uxxi_arquitectura ALL=(ALL) NOPASSWD: /bin/su - ora12as"
+  graylog:
+    - authpriv.*                                              @log.ocunet:1515;RSYSLOG_SyslogProtocol23Format
+
+
+services:
+  krb5:
+    - krb5kdc
+    - kadmin
+  common:
+    - smb
+    - winbind
+    - sshd
+    - rsyslog

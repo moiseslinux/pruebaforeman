@@ -1,0 +1,12 @@
+---
+- name: restart sssd
+  service:
+    name: sssd
+    enabled: yes
+    state: restarted
+
+- name: restart smb
+  service:
+    name: smb
+    enabled: yes
+    state: restarted

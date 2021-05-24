@@ -1,0 +1,33 @@
+--- 
+
+
+- shell: netstat -nap | grep -i java | grep -i listen | grep -i {{ ansible_default_ipv4.address }} | awk '{print $4}' | uniq | grep -v LISTEN | sed -e 's/.*://'
+  register: port 
+- debug:
+    msg: "{{ port.stdout_lines}}"
+  
+
+- local_action: copy content={{ port.stdout_lines }} dest=/etc/ansible/roles/iptables2/roles/vars/java
+
+- name: Borrar Caracteres Especiales
+  connection: local
+  shell: sed 's/[]["]\|[[:space:]]//g' /etc/ansible/roles/iptables2/roles/vars/java >> /etc/ansible/roles/iptables2/roles/vars/java.yml
+  register: pp
+
+
+
+- name: CREAR FILE JAVA
+  connection: local
+  shell: sed -i "1 s|^|{{ java }}|" /etc/ansible/roles/iptables2/roles/vars/java.yml
+  register: texto
+
+
+
+
+- name: default
+  connection: local
+  shell: cat /etc/ansible/roles/iptables2/roles/vars/java.yml >> /etc/ansible/roles/iptables2/roles/defaults/main.yml
+  
+
+
+

@@ -1,0 +1,115 @@
+---
+  - include_vars: name_vars.yml
+
+#  - name: DELETE FILE TCP
+#      connection: local
+#      shell: /bin/rm -rf /etc/ansible/roles/iptables2/roles/vars/hosts/porttcp.yml
+#      file: path=/etc/ansible/roles/iptables2/roles/vars/vars.yml* state=absent
+#
+
+
+  - name: EDIT FILE PORT TCP
+    connection: local
+    lineinfile:
+        path: /etc/ansible/roles/iptables2/roles/vars/hosts/newport
+        regexp: "{{ item }}"
+        state: absent
+    with_items:
+      - "address"
+      - "name"
+      - "pid" 
+      - "stime"
+      - "user"
+      - "}"
+      - "]"
+      - "{"
+      - "TASK "
+      - "ok"
+      - "msg"
+      - "PLAY" 
+
+# depura y separa tcp y udp, los ordenas  "port": 14021,    "protocol": "udp", 
+  - connection: local
+    shell:  sed 'N;s/\n//g' /etc/ansible/roles/iptables2/roles/vars/hosts/newport > /etc/ansible/roles/iptables2/roles/vars/hosts/tcp1
+
+# filtra solo tcp elimina los udp
+  - connection: local
+    shell: cat /etc/ansible/roles/iptables2/roles/vars/hosts/tcp1  | grep -v "udp" > /etc/ansible/roles/iptables2/roles/vars/hosts/tcp2
+
+# filtra todo solo deja los puertos por fila
+  - connection: local
+    shell:  awk '/"port":/{ print $4 }' /etc/ansible/roles/iptables2/roles/vars/hosts/tcp2  | sort | uniq | fmt >  /etc/ansible/roles/iptables2/roles/vars/vars1
+# Unir las filas en una sola
+  - connection: local
+    shell: sed -n -e '1x;1!H;${x;s-\n- -gp}'  /etc/ansible/roles/iptables2/roles/vars/vars1  > /etc/ansible/roles/iptables2/roles/vars/vars
+#
+
+
+
+    
+# elimina la primera linea
+  - connection: local
+    shell: cat /etc/ansible/roles/iptables2/roles/vars/vars | sed '/^ *$/d' > /etc/ansible/roles/iptables2/roles/vars/varsT1
+
+# Unir las filas en una sola
+#  - connection: local
+#    shell: sed -n -e '1x;1!H;${x;s-\n- -gp}'  /etc/ansible/roles/iptables2/roles/vars/varsT1  > /etc/ansible/roles/iptables2/roles/vars/varsT2
+# elimana los espacion en blancos 
+  - connection: local
+    shell: sed -r 's/\s+//g' /etc/ansible/roles/iptables2/roles/vars/varsT1 > /etc/ansible/roles/iptables2/roles/vars/varsT2
+# Elimina la ultima coma
+  - connection: local
+    shell:  sed  -e 's/.$//' /etc/ansible/roles/iptables2/roles/vars/varsT2 > /etc/ansible/roles/iptables2/roles/vars/vars.yml
+# Agrega port: 
+  - name: CREAR FILE TCP
+    connection: local
+    shell: sed -i "1 s|^|{{ edittcp }}  |"  /etc/ansible/roles/iptables2/roles/vars/vars.yml
+
+
+
+#________________________________________________  UDP  _____________________________________________________
+
+  - name: EDIT FILE PORT UDP
+    connection: local
+# depura y separa tcp y udp, los ordenas  "port": 14021,    "protocol": "udp",
+    shell:  sed 'N;s/\n//g' /etc/ansible/roles/iptables2/roles/vars/hosts/newport >> /etc/ansible/roles/iptables2/roles/vars/hosts/udp1
+
+  - connection: local
+# filtra solo udo elimina los tcp
+    shell: cat /etc/ansible/roles/iptables2/roles/vars/hosts/udp1  | grep -v "tcp" >> /etc/ansible/roles/iptables2/roles/vars/hosts/udp2
+
+  - connection: local
+# filtra todo solo deja los puertos por fila
+    shell:  awk '/"port":/{ print $2 }' /etc/ansible/roles/iptables2/roles/vars/hosts/udp2  | sort | uniq | fmt >>  /etc/ansible/roles/iptables2/roles/vars/varsU
+
+# Unir las filas en una sola
+  - connection: local
+    shell: sed -n -e '1x;1!H;${x;s-\n- -gp}'  /etc/ansible/roles/iptables2/roles/vars/varsU  > /etc/ansible/roles/iptables2/roles/vars/varsUt
+
+
+
+
+  - connection: local
+# elimina la primera linea
+    shell: cat /etc/ansible/roles/iptables2/roles/vars/varsUt | sed '/^ *$/d' >> /etc/ansible/roles/iptables2/roles/vars/varsU1
+
+# Unir las filas en una sola
+#  - connection: local
+#    shell: sed -n -e '1x;1!H;${x;s-\n- -gp}'  /etc/ansible/roles/iptables2/roles/vars/varsU1  > /etc/ansible/roles/iptables2/roles/vars/varsU2
+       
+  
+  - connection: local
+#
+    shell: sed -r 's/\s+//g' /etc/ansible/roles/iptables2/roles/vars/varsU1 >> /etc/ansible/roles/iptables2/roles/vars/varsU2
+
+  - connection: local
+    shell:  sed  -e 's/.$//' /etc/ansible/roles/iptables2/roles/vars/varsU2 >> /etc/ansible/roles/iptables2/roles/vars/varsU.yml
+
+  - name: CREAR FILE TCP
+    connection: local
+    shell: sed -i "1 s|^|{{ editudp }}  |"  /etc/ansible/roles/iptables2/roles/vars/varsU.yml
+
+  - name: COPY
+    connection: local
+    shell: cat /etc/ansible/roles/iptables2/roles/vars/varsU.yml >> /etc/ansible/roles/iptables2/roles/vars/vars.yml
+...

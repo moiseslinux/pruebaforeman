@@ -1,0 +1,10 @@
+---
+  - name: Centos
+    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/centos.yml
+    when: ansible_facts['distribution'] == 'CentOS'
+ 
+  - name: Oracle  
+    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/oracle.yml
+    when: ansible_facts['distribution']  == 'OracleLinux'
+ 
+

@@ -1,0 +1,62 @@
+---
+# Paquetes de software a desinstalar rhm
+software_uninstall:
+  packages:
+    - rhn-check
+    - rhn-client-tools
+    - rhn-setup
+    - rhn-setup-gnome
+    - rhnlib
+    - rhnsdyum-rhn-plugin
+    - yum-plugin-ulninfo
+
+# Paquetes de software a instalar python-dateutil (1)
+software_install_1:
+  packages:
+    - python-dateutil
+    
+# Paquetes de software a instalar python-rhsm subscription-manager katello (2)
+software_install_2:
+  packages:
+    - python-rhsm 
+    - subscription-manager.x86_64
+    #- 'http://serverforeman.uxxi.net/pub/katello-ca-consumer-latest.noarch.rpm'
+
+# Paquetes de software a instalar katello tools (3)
+software_install_3:
+  packages: 
+    - katello-host-tools 
+    - katello-agent 
+    - katello-host-tools-tracer
+    - puppet-agent
+
+# Paquetes de software a instalar subscription-manager (4)
+software_install_4:
+  packages: 
+    - subscription-manager
+
+# Paquetes de software a instalar (5)
+software_install_5:
+  packages:
+    - katello-host-tools
+    - katello-agent
+    - katello-host-tools-tracer
+  
+
+# Paquetes de software a instalar (6)
+software_install_6:
+  packages: 
+    -  ntp
+    -  ntpdate
+
+# Paquetes de software a instalar katello tools (7)
+software_install_7:
+  packages: 
+    - puppet-agent  
+
+# Paquetes de software a instalar katello tools (8)
+software_install_8:
+  packages:
+    - nc
+
+# Variables del Dominio

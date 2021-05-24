@@ -1,0 +1,17 @@
+# INstalacion de paquets
+#
+- name: copiar 
+  copy:
+    src: /etc/ansible/roles/subscription-manager/templates/C71.repo
+    dest: /etc/yum.repos.d/
+    backup: yes
+
+- name: install the latest version of subscription-manager 
+  yum:
+    name: subscription-manager
+    state: latest
+
+- name: install katello  rpm 
+  yum:
+    name: rpm -Uvh http://H16113.ocuarsys/pub/katello-ca-consumer-latest.noarch.rpm
+    state: present

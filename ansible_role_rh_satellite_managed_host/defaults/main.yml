@@ -1,0 +1,38 @@
+---
+### Satellite server details
+rh_satellite_managed_host_satellite_server_fqdn: ''
+rh_satellite_managed_host_satellite_server_ip: ''
+rh_satellite_managed_host_satellite_server_insecure: True
+
+### Katello CA Consumer rpm
+rh_satellite_managed_host_katello_ca_consumer_rpm_url: http://{{ rh_satellite_managed_host_satellite_server_fqdn }}/pub/katello-ca-consumer-latest.noarch.rpm
+
+### Subscription manager
+rh_satellite_managed_host_organization: ''
+rh_satellite_managed_host_activation_key: ''
+
+### Check existing membership and Force register if required
+rh_satellite_managed_host_check_membership: True
+rh_satellite_managed_host_cleanup_prior_registration: True
+rh_satellite_managed_host_force_registration: False
+
+### Unregister from Red Hat Satellite if required
+rh_satellite_managed_host_unregister: False
+
+### Install required packaged
+rh_satellite_managed_host_required_packages:
+  - katello-agent
+  - katello-host-tools
+  - katello-host-tools-tracer
+  - insights-client
+
+### Insights configuration
+rh_satellite_managed_host_insights_register: False
+rh_satellite_managed_host_insights_force_registration: False
+rh_satellite_managed_host_insights_conf_obfuscate_ip: True
+rh_satellite_managed_host_insights_conf_obfuscate_hostname: True
+
+### Molecule dummy switch
+rh_satellite_managed_host_molecule_dummy: False
+
+...

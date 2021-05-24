@@ -1,0 +1,15 @@
+/var/log/firewall/iptables.log
+{
+rotate 7
+daily
+size 10M
+dateext
+missingok
+create 600 root adm
+notifempty
+compress
+delaycompress
+postrotate
+invoke-rc.d rsyslog reload > /dev/null
+endscript
+}

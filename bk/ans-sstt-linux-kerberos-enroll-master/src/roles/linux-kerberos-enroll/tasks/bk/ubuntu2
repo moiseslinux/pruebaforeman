@@ -1,0 +1,183 @@
+---
+
+- name: INSTALL BASIC PACKAGES UBUNTU
+  apt:
+    name: "{{ software_packages_UB.packages}}"
+    state: present
+  tags:
+    - apt
+
+- name: EDIT RESOLV UXXI 
+  when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+  lineinfile:
+    path: /etc/resolv.conf
+    state: present
+    line: "{{ item }}"
+  loop: "{{ dc.nameserver_uxxi }}"
+
+- name: EDIT RESOLV ARSYS
+  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+  lineinfile:
+    path: /etc/resolv.conf
+    state: present
+    line: "{{ item }}"
+  loop: "{{ dc.nameserver_arsys }}"
+
+- name: EDIT RESOLV AWS
+  when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+  lineinfile:
+    path: /etc/resolv.conf
+    state: present
+    line: "{{ item }}"
+  loop: "{{ dc.nameserver_aws }}"
+
+- name: EDIT krb5.conf
+  copy:
+    src: templates/ubuntu/krb5.conf
+    dest: /etc/krb5.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: EDIT timesyncd.conf
+  copy:
+    src: templates/ubuntu/timesyncd.conf
+    dest: /etc/systemd/timesyncd.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: EDIT samba
+  copy:
+    src: templates/ubuntu/smb.conf
+    dest: /etc/samba/smb.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: EDIT nsswitch
+  copy:
+    src: templates/ubuntu/nsswitch.conf
+    dest: /etc/nsswitch.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: EDIT realmd.conf
+  copy:
+    src: templates/ubuntu/realmd.conf
+    dest: /etc/realmd.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: EDIT common-account
+  copy:
+    src: templates/ubuntu/common-account
+    dest: /etc/pam.d/common-account
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: EDIT common-auth 
+  copy:
+    src: templates/ubuntu/common-auth 
+    dest: /etc/pam.d/common-auth 
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: EDIT common-password 
+  copy:
+    src: templates/ubuntu/common-password
+    dest: /etc/pam.d/common-password 
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: EDIT common-session
+  copy:
+    src: templates/ubuntu/common-session
+    dest: /etc/pam.d/common-session
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+
+- name: replace line krb5.conf ARSYS
+  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+  replace:
+    path: /etc/krb5.conf
+    regexp: 'H15258.redocu.lan'
+    replace: '{{ dc.machinearsys }}'
+    
+
+- name: replace line krb5.conf UXXI
+  when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+  replace:
+    path: /etc/krb5.conf
+    regexp: '^H15258.redocu.lan'
+    replace: '{{ dc.machineuxxiaws }}'
+    
+
+- name: replace line krb5.conf AWS
+  when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+  replace:
+    path: /etc/krb5.conf
+    regexp: '^H15258.redocu.lan'
+    replace: '{{ dc.machineuxxiaws }}'
+  notify:
+  - restart service  
+
+- name: SERVICE IS RUNNING
+  systemd:
+    state: restarted
+    name: "{{ item }}"
+    enabled: yes
+  loop: "{{ services.ubuntu }}"
+  
+  
+- name: STOP IS RUNNING
+  systemd:
+    state: stopped
+    name: "{{ item }}"
+    enabled: no
+  loop: "{{ services.ubuntu_down }}"
+
+- name: realmd
+  shell: realm discover -v REDOCU.LAN
+
+
+#- name: UNION MACHINE TO DOMAIN
+  #shell: echo '{{ dc.admin.pass }}' |  realm join --verbose --user= "{{ dc.admin.pass }}" redocu.lan --install=/
+  #shell: realm join --verbose --user=intlinuxldap  redocu.lan --install=/
+  #expect:
+    #command: realm join --verbose --user=intlinuxldap  redocu.lan --install=/
+    #responses:
+      #Contraseña para intlinuxldap: UYG57ygf492Dh!
+      #when: realmd_bound|failed
+- name: Join system to AD and put the computer object in the Linux OU
+  command: /bin/bash -c 'echo {{ dc.pass }}' | realm join --verbose --user=intlinuxldap redocu.lan --install=/
+  #no_log: True
+  when: realmd_bound|failed
+
+
+- name: EDIT sssd
+  copy:
+    src: templates/ubuntu/sssd.conf
+    dest: /etc/sssd/sssd.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+

@@ -1,0 +1,49 @@
+---
+# defaults file for
+#firewall_state: started
+firewall_enabled_at_boot: true
+
+firewall_flush_rules_and_chains: true
+
+firewall_TCP_default_ports: 22,80,443,8140,389,53,123,139
+
+firewall_UDP_default_ports: 67,137,138
+
+firewall_allowed_JAVA_ports: []
+
+firewall_allowed_Admin_ports: 8001,8401,9001,8501,7007,8101,10001
+
+firewall_allowed_Oracle_ports: 2486,2487
+firewall_allowed_Especial_ports: []
+firewall_allowed_Cliente_ports: []
+
+firewall_range_ip1: 172.23.0.0/16
+
+firewall_range_ip2: 172.21.0.0/16
+
+firewall_range_ip3: 172.22.0.0/16
+
+firewall_range_ip4: 172.16.0.0/16
+
+firewall_range_ip5: 172.29.0.0/16
+
+firewall_range_ip6: 172.30.0.0/16
+
+firewall_range_ip7: 172.31.0.0/16
+
+
+firewall_allowed_udp_ports: []
+firewall_forwarded_tcp_ports: []
+firewall_forwarded_udp_ports: []
+firewall_additional_rules: []
+firewall_enable_ipv6: true
+firewall_ip6_additional_rules: []
+firewall_log_dropped_packets: true
+
+#  copia galaxy firewall management software is disabled.
+firewall_disable_firewalld: false
+firewall_disable_ufw: false
+
+#reglas
+## Cerrar rango de ips colomibia.
+firewall_additional_rules: iptables -A INPUT  -s 192.168.1.0/24 -j DROP

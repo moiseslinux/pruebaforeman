@@ -1,0 +1,32 @@
+---
+ - name: prueba inv
+   local_action: shell echo {{ host.rc }} >> /etc/ansible/inventory/forem-bast/pp
+  
+
+
+
+#copiar infor fact dentro de la maquina remota
+#- name: Copy ansible facts to a file.
+#  copy:
+#   content: "{{ ansible_fqdn }}"
+#   dest: /tmp/ansible_facts_details.json
+
+
+#- name: Copy the file from mwiapp01 to mwiapp02 using Method Push
+#  tags: sync-pull 
+#  synchronize:
+#    src: /tmp/ansible_facts_details.json
+#    dest: "{{ item }}"
+#    mode: pull
+#  delegate_to: serverforeman.uxxi.net
+#  register: syncfile
+#  run_once: true
+#  with_items:
+#    - "/etc/ansible/inventory/forem-bast/"
+#- name: fqdn arsys
+#  local_action: copy content={{ ansible_fqdn }} dest=/etc/ansible/inventory/forem-bast/test
+
+
+#- name: inventory arsys 
+#  local_action: shell cat /etc/ansible/inventory/forem-bast/test >> /etc/ansible/inventory/arsys
+

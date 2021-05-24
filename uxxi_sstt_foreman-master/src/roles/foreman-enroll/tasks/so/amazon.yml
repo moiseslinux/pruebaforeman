@@ -1,0 +1,282 @@
+############################################### ORACLE LINUX  #####################################
+---
+  - debug:
+      msg:
+      - "Distribution {{ hostvars[inventory_hostname].ansible_distribution }}"
+      - "Version {{ hostvars[inventory_hostname].ansible_distribution_version }}"
+
+ - name: Hostname uxxi
+    when: ansible_domain == "redocu.lan"
+    shell: echo {{ ansible_fqdn }} >> /etc/ansible/inventory/uxxi
+    delegate_to: localhost
+
+  - name: Hostname aws
+    when: ansible_domain == "ocuaws.lan"
+    shell: echo {{ ansible_fqdn }} >> /etc/ansible/inventory/aws
+    delegate_to: localhost
+
+  - name: Hostname arsys
+    when: ansible_domain == "ocuarsys"
+    shell: echo {{ ansible_fqdn }} >> /etc/ansible/inventory/arsys
+    delegate_to: localhost
+  
+  - name: Erratas
+    include_tasks: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/erratas7.yml
+
+
+  - name: Instalar PYTHON-NETADDR
+    connection: local
+    yum:
+      name: python-netaddr
+      state: present
+
+  - name: Check y conexion foreman 8140 443 ARSYS
+    when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+    wait_for:
+      host: serverforeman.uxxi.net
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: no
+    with_items:
+      - 8140
+
+  - name: Check y conexion foreman 8140 443 UXXI
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    wait_for:
+      host: H16110.redocu.lan
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: no
+    with_items:
+      - 8140
+
+  - name: Check y conexion foreman 8140 443 AWS
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    wait_for:
+      host: serverforeman.uxxi.net
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: no
+    with_items:
+      - 8140
+
+
+  - name: Comprobar si existe el environment
+    connection: local
+    stat:
+      path: "/etc/puppetlabs/code/environments/{{ entorno }}"
+    register: envi_path
+    when: ansible_distribution == "Amazon"
+
+  - name: Crear el environment
+    connection: local
+    file: 
+      #path: "/etc/puppetlabs/code/environments/{{ entorno }}"
+      path: "{{ item }}"
+      state: directory
+    with_items:
+    - /etc/puppetlabs/code/environments/{{ entorno }}
+    - /etc/puppetlabs/code/environments/{{ entorno }}/data
+    - /etc/puppetlabs/code/environments/{{ entorno }}/manifest
+    - /etc/puppetlabs/code/environments/{{ entorno }}/modules
+    when: envi_path.stat.exists == False and ansible_distribution == "Amazon"
+  
+  - name: proxy hosts aws
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    lineinfile:
+      path: /etc/hosts
+      state: present
+      insertafter: '^foreman'
+      line: 172.30.0.195 ip-172-30-0-195.eu-central-1.compute.internal
+  
+  - name: proxy hosts uxxi
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    lineinfile:
+      path: /etc/hosts
+      state: present
+      insertafter: '^foreman'
+      line: 172.16.32.86 h16110.redocu.lan
+
+ # - name: CREA CARPETA REPO
+ #   file:
+ #     path: "{{ item }}"
+ #     state: directory
+ #     owner: root
+ #     group: root
+ #     mode: 0775
+ #   with_items:
+ #     - /etc/yum.repos.d/repo
+
+ # - name: Move /etc/yum.repos.d
+ #   shell: mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/repo/
+ #   
+ # - name: COPY README_UXXI
+ #   copy:
+ #     src: /tmp/README_UXXI
+ #     dest: /etc/yum.repos.d/
+ #     owner: root
+ #     group: root
+ #     mode: u=rw,g=r,o=r
+
+  - name: UNINSTALL PACKAGES OL7
+    yum:
+      name: "{{ software_uninstall.packages}}"
+      state: absent
+    when: ansible_distribution == "Amazon"
+    ignore_errors: yes
+
+#  - name: DOWNLOAD OL7 REPO
+#    when: ansible_distribution == "Amazon"
+#    get_url:
+#      url: http://yum.oracle.com/public-yum-ol7.repo
+#      dest: /etc/yum.repos.d/public-yum-ol7.repo
+
+  - name: SINCRONIZAR HORA
+    yum:
+      name: "{{ software_install_6.packages}}"
+      state: present
+    ignore_errors: yes
+
+  - name: AJUSTE DE HORA
+    shell: /usr/sbin/ntpdate   130.206.3.166
+    ignore_errors: yes
+
+  - name: INSTALL PACKAGES 1  python-dateutil
+    when: ansible_distribution == "Amazon"
+    yum:
+      name: "{{ software_install_1.packages}}"
+      state: present
+    tags:
+      - yum
+
+
+  - name: EDIT SBSM REPO
+    when: ansible_distribution == "Amazon"
+    copy:
+      src: templates/SBSM.repo
+      dest: /etc/yum.repos.d
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+
+  - name: INSTALL PACKAGES 7 PUPPET
+    when: ansible_facts['distribution'] == "Amazon"
+    yum:
+      name: "{{ software_install_7.packages}}"
+      state: present
+      disable_gpg_check: yes
+    tags:
+      - yum
+
+  - name: STOP PUPPET
+    service:
+      name: puppet
+      state: stopped
+
+
+  - name: EDIT PUPPET 172.23-21 ARSYS
+    when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+    template:
+      src: templates/172.23-21/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+
+  - name: EDIT PUPPET 172.16-29 UXXI
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    template:
+      src: templates/172.16-29/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+
+  - name: EDIT PUPPET 172.30-31 AWS
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    template:
+      src: templates/172.30-31/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+
+  - name: REINICIO PUPPET
+    service:
+      name: puppet
+      state: started
+      enabled: yes
+
+
+
+#  - name: EDIT OL7 REPO (DISABLED)
+#    when: ansible_distribution == "Amazon"
+#    yum_repository:
+#      name: ol7_latest
+#      baseurl: http://serverforeman.uxxi.net/pulp/repos/UXXI/Library/custom/OL7/OL7-Latest/
+#      description: Oracle Linux $releasever Latest ($basearch)
+#      gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+#      gpgcheck: yes
+#      enabled: no
+#      file: public-yum-ol7
+
+
+  - name: INSTALL PACKAGES 2 python-rhsm subscription-manager.x86_64 katello-serverforeman
+    when: ansible_facts['distribution'] == "Amazon"
+    yum:
+      name: "{{ software_install_2.packages}}"
+      disablerepo: ol7_latest
+      state: present
+    tags:
+      - yum
+
+#19/02/21
+#  - name: SM REGISTER
+#    when: ansible_distribution == "Amazon"
+#    redhat_subscription:
+#      state: present
+#      activationkey: C7
+#      org_id: UXXI
+
+
+  - name: INSTALL PACKAGES 3 katello-host-tools 
+    when: ansible_distribution == "Amazon"
+    yum:
+      name: "{{ software_install_3.packages}}"
+      state: present
+      disable_gpg_check: yes
+    tags:
+      - yum
+
+  - name: REINICIO PUPPET
+    service:
+      name: puppet
+      state: restarted
+
+  - name: REINICIO GOFERD
+    service:
+      name: goferd.service
+      state: restarted
+
+  - name: YUM CLEAN
+    shell: yum clean all
+
+  - name: YUM REPOLIST
+    shell: yum repolist
+
+
+  - name: SYNC
+    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/sync.yml
+

@@ -1,0 +1,11 @@
+---
+
+- hosts: all
+  become: yes
+  roles:
+    - role: foreman-enroll 
+      tags: foreman
+#  tasks:
+#    - name: Print Remote Execution keys
+#      debug:
+#        var: remote_execution_ssh_keys

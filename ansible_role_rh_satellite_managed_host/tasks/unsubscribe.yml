@@ -1,0 +1,39 @@
+---
+- name: Unregister insights-client
+  command: insights-client --unregister
+  args:
+    warn: False
+  changed_when: False
+  notify: stop_disable_insights
+
+- name: Unsubscribe from Red Hat Satellite if required
+  redhat_subscription:
+    state: absent
+  register: rh_satellite_managed_host_unsubscribe_register
+  notify:
+    - stop_disable_goferd
+    - stop_disable_insights
+
+- name: Clean subscription manager and yum cache
+  command: subscription-manager clean; subscription-manager remove --all; yum clean all
+  args:
+    warn: False
+  failed_when: False
+  changed_when: False
+
+- name: Remove content host from Satellite
+  uri:
+    url: https://{{ rh_satellite_managed_host_satellite_server_fqdn }}/api/hosts/{{ ansible_fqdn }}
+    user: '{{ rh_satellite_service_account_user }}'
+    password: '{{ rh_satellite_service_account_pass }}'
+    method: DELETE
+    validate_certs: False
+    force_basic_auth: True
+    use_proxy: False
+    status_code: 200
+    return_content: False
+  register: rh_satellite_managed_host_satellite_server_api_check_rc
+  failed_when: False
+  no_log: True
+
+...

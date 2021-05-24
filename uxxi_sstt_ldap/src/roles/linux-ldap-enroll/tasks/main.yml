@@ -1,0 +1,9 @@
+---
+  - name: SO FAMILY REDHAT
+    include_tasks: /etc/ansible/roles/uxxi_sstt_ldap/src/roles/linux-ldap-enroll/tasks/redhat.yml
+    when: ansible_os_family == 'RedHat'
+
+  - name: SO FAMILY UBUNTU
+    include_tasks: /etc/ansible/roles/uxxi_sstt_ldap/src/roles/linux-ldap-enroll/tasks/ubuntu.yml
+    when: ansible_os_family == 'Debian'
+

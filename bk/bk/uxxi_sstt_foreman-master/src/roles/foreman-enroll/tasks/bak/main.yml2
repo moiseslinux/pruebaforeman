@@ -1,0 +1,152 @@
+---
+##################################################CENTOS#######################################################
+- name: EDIT C7 REPO
+  when: ansible_distribution == "CentOS"
+  copy:
+    src: templates/c7.repo
+    dest: /etc/yum.repos.d
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+
+- name: INSTALL PACKAGES 4
+  when: ansible_facts['distribution'] == "CentOS"
+  yum:
+    name: "{{ software_install_4.packages}}"
+    state: present
+  tags:
+    - yum
+
+- name: KATELLO RPM
+  when: ansible_facts['distribution'] == "CentOS"
+  yum:
+    name: http://serverforeman.uxxi.net/pub/katello-ca-consumer-latest.noarch.rpm
+    state: present
+
+
+- name: SM REGISTER
+  when: ansible_facts['distribution'] == "CentOS"
+  redhat_subscription:
+    state: present
+    activationkey: C7
+    org_id: UXXI
+
+- name: INSTALL PACKAGES 5
+  when: ansible_facts['distribution'] == "CentOS"
+  yum:
+    name: "{{ software_install_5.packages}}"
+    state: present
+    disable_gpg_check: yes 
+  tags:
+    - yum
+
+- name: EDIT PUPPET
+  when: ansible_facts['distribution'] == "CentOS"
+  template:
+    src: templates/puppet.conf
+    dest: /etc/puppetlabs/puppet
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  tags: 
+      - templates
+
+- name: REINICIO PUPPET
+  when: ansible_facts['distribution'] == "CentOS"
+  shell: systemctl restart puppet
+
+- name: REINICIO GOFERD
+  when: ansible_facts['distribution'] == "CentOS"
+  shell: systemctl restart goferd.service
+
+
+#################################################Oracle Linux########################################################
+- name: UNINSTALL PACKAGES OL7
+  yum:
+    name: "{{ software_uninstall.packages}}"
+    state: absent
+  with_items: "{{ansible_distribution}}"
+  when: item.distribution == OracleLinux
+
+
+- name: DOWNLOAD OL7 REPO
+  when: ansible_distribution == "OracleLinux"
+  get_url:
+    url: http://yum.oracle.com/public-yum-ol7.repo
+    dest: /etc/yum.repos.d/public-yum-ol7.repo
+
+
+- name: INSTALL PACKAGES 1
+  when: ansible_distribution == "OracleLinux"
+  yum:
+    name: "{{ software_install_1.packages}}"
+    state: present
+  tags:
+    - yum
+
+
+- name: EDIT EPEL
+  when: ansible_distribution == "OracleLinux"
+  copy:
+    src: templates/epel.repo
+    dest: /etc/yum.repos.d
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+
+
+- name: EDIT OL7 REPO (DISABLED)
+  when: ansible_distribution == "OracleLinux"
+  yum_repository:
+    name: ol7_latest
+    baseurl: http://serverforeman.uxxi.net/pulp/repos/UXXI/Library/custom/OL7/OL7-Latest/
+    description: Oracle Linux $releasever Latest ($basearch)
+    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+    gpgcheck: yes
+    enabled: no
+    file: public-yum-ol7
+
+
+- name: INSTALL PACKAGES 2
+  when: ansible_distribution == "OracleLinux"
+  yum:
+    name: "{{ software_install_2.packages}}"
+    disablerepo: ol7_latest
+    state: present
+  tags:
+    - yum
+
+
+- name: SM REGISTER
+  when: ansible_distribution == "OracleLinux"
+  redhat_subscription:
+    state: present
+    activationkey: OL7
+    org_id: UXXI
+
+
+- name: INSTALL PACKAGES 3
+  when: ansible_distribution == "OracleLinux"
+  yum:
+    name: "{{ software_install_3.packages}}"
+    state: present
+    disable_gpg_check: yes 
+  tags:
+    - yum
+
+
+- name: EDIT PUPPET
+  when: ansible_distribution == "OracleLinux"
+  template:
+    src: templates/puppet.conf
+    dest: /etc/puppetlabs/puppet
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  tags: 
+      - templates
+
+
+- name: ENABLE PUPPET
+  when: ansible_distribution == "OracleLinux"
+  shell: /opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true 

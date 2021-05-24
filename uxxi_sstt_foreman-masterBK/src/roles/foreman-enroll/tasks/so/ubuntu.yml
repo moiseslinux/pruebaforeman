@@ -1,0 +1,252 @@
+---
+  - debug:
+      msg:
+      - "Distribution {{ hostvars[inventory_hostname].ansible_distribution }}"
+      - "Version {{ hostvars[inventory_hostname].ansible_distribution_version }}"
+
+
+  - name: INSTALL python-simplejson
+    apt:
+      name: python-simplejson
+      state: present
+  
+  - name: INSTALANDO python-simplejson
+    wait_for:
+      timeout: 20
+  
+  - name: Check y conexion foreman 8140 443 ARSYS
+    when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+    wait_for:
+      host: serverforeman.uxxi.net
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: no
+    with_items:
+      - 8140
+
+  - name: Check y conexion foreman 8140 443 UXXI
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    wait_for:
+      host: H16110.redocu.lan
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: no
+    with_items:
+      - 8140
+
+  - name: Check y conexion foreman 8140 443 AWS
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    wait_for:
+      host: serverforeman.uxxi.net
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: no
+    with_items:
+      - 8140
+
+  - name: Comprobar si existe el environment
+    connection: local
+    stat:
+      path: "/etc/puppetlabs/code/environments/{{ entorno }}"
+    register: envi_path
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Crear el environment
+    connection: local
+    file:
+      path: "{{ item }}"
+      state: directory
+    with_items:
+    - /etc/puppetlabs/code/environments/{{ entorno }}
+    - /etc/puppetlabs/code/environments/{{ entorno }}/data
+    - /etc/puppetlabs/code/environments/{{ entorno }}/manifest
+    - /etc/puppetlabs/code/environments/{{ entorno }}/modules
+    when: envi_path.stat.exists == False and ansible_distribution == "Ubuntu"
+
+  
+  - name: CREA CARPETA REPO UBUNTU
+    when: ansible_facts['distribution'] == "Ubuntu"
+    file:
+      path: "{{ item }}"
+      state: directory
+      owner: root
+      group: root
+      mode: 0775
+    with_items:
+      - /etc/apt/repo
+
+  - name: MOVE /etc/apt/repo UBUNTU
+    shell: mv /etc/apt/sources.list /etc/apt/repo
+
+  - name: EDIT SOURCES LIST REPO
+    copy:
+      src: templates/sources.list
+      dest: /etc/apt/
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+
+
+  - name: COPY README_UXXI
+    copy:
+      src: templates/README_UXXI
+      dest: /etc/apt/
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+
+  - name: APT
+    when: ansible_facts['distribution'] == "Ubuntu"
+    shell: wget https://apt.puppetlabs.com/puppet6-release-bionic.deb 
+  
+  - name: APT2
+    when: ansible_facts['distribution'] == "Ubuntu"
+    shell: dpkg -i puppet6-release-bionic.deb
+  
+  - name: APT3
+    when: ansible_facts['distribution'] == "Ubuntu"
+    shell: apt update
+
+  - name: SINCRONIZAR HORA
+    apt:
+      name: "{{ software_install_6.packages}}"
+      state: present
+
+  - name: INSTALANDO NTP
+    wait_for:
+      timeout: 10
+
+  - name: AJUSTE DE LA ZONA HORARIA
+    when: ansible_facts['distribution'] == "Ubuntu"
+    shell: /bin/timedatectl set-timezone  Europe/Madrid
+    ignore_errors: yes
+
+  - name: AJUSTE DE HORA
+    when: ansible_facts['distribution'] == "Ubuntu"
+    shell: /bin/ntpdate 2.europe.pool.ntp.org
+    ignore_errors: yes
+
+  
+  - name: INSTALL PACKAGES 7 PUPPET
+    when: ansible_facts['distribution'] == "Ubuntu"
+    apt:
+      name: "{{ software_install_7.packages}}"
+      state: present
+      #disable_gpg_check: yes 
+    tags:
+      - apt
+
+  - name: STOP PUPPET
+    service:
+      name: puppet
+      state: stopped
+
+  - name: EDIT PUPPET 172.23-21
+    #when: ansible_facts['distribution'] == "Ubuntu"
+    when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16') 
+    template:
+      src: templates/172.23-21/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags: 
+      - templates
+  
+  - name: EDIT PUPPET 172.16-29
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    template:
+      src: templates/172.16-29/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+
+  - name: EDIT PUPPET 172.30-31
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    template:
+      src: templates/172.30-31/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+ 
+  - name: REINICIO PUPPET
+    service:
+      name: puppet
+      state: started
+      enabled: yes
+
+ # - name: INSTALL PACKAGES 4 subscription-manager
+ #   when: ansible_facts['distribution'] == "Ubuntu"
+ #   apt:
+ #     name: "{{ software_install_4.packages}}"
+ #     state: present
+ #   tags:
+ #     - apt
+
+ # - name: KATELLO RPM DESCARGAR 172.23-21
+ #   when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+ #   yum:
+ #     name: http://serverforeman.uxxi.net/pub/katello-ca-consumer-latest.noarch.rpm
+ #     state: present
+ 
+ # - name: KATELLO RPM DESCARGAR 172.16-29
+ #   when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+ #   yum:
+ #     name: http://H16110.redocu.lan/pub/katello-ca-consumer-latest.noarch.rpm
+ #     state: present
+
+
+ # - name: SM REGISTER
+ #   when: ansible_facts['distribution'] == "CentOS"
+ #   redhat_subscription:
+ #     state: present
+ #     activationkey: C7
+ #     org_id: UXXI
+
+ # - name: INSTALL PACKAGES 5 KATELLO-TOOLS 
+ #   when: ansible_facts['distribution'] == "CentOS"
+ #   yum:
+ #     name: "{{ software_install_5.packages}}"
+ #     state: present
+ #     disable_gpg_check: yes 
+ #   tags:
+ #     - yum
+
+ # - name: BORRAR INSTALL REPO
+ #   file:
+ #     path: /etc/yum.repos.d/install.repo
+ #     state: absent
+
+ # - name: REINICIO PUPPET
+ #   service:
+ #     name: puppet
+ #     state: restarted
+
+ # - name: REINICIO GOFERD
+ #   service:
+ #     name: goferd.service
+ #     state: restarted
+  
+ # - name: APT 
+ #   shell:
+ #     apt-get clean
+
+ # - name: APT CLEAN
+ #   shell:
+ #     apt-get autoremove
+  
+  - name: SYNC
+    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/sync.yml
+

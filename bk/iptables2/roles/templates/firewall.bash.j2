@@ -1,0 +1,155 @@
+#!/bin/bash
+# iptables firewall.
+#sambil.ve
+#
+# Referencia de puerto común:
+#   22: SSH
+#   25: SMTP
+#   80: HTTP
+#   123: NTP
+#   443: HTTPS
+#
+
+# No spoofing.
+if [ -e /proc/sys/net/ipv4/conf/all/rp_filter ]
+then
+for filter in /proc/sys/net/ipv4/conf/*/rp_filter
+do
+echo 1 > $filter
+done
+fi
+
+# Default reglas.
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+
+{% if firewall_flush_rules_and_chains %}
+# Clean todas las reglas
+iptables -t nat -F
+iptables -t mangle -F
+iptables -F
+iptables -X
+{% endif %}
+
+# Acpto trafico from loopback interface (localhost).
+iptables -A INPUT -i lo -j ACCEPT
+
+# Forwarded ports.
+{# Agregar una regla para cada puerto reenviado #}
+{% for forwarded_port in firewall_forwarded_tcp_ports %}
+iptables -t nat -I PREROUTING -p tcp --dport {{ forwarded_port.src }} -j REDIRECT --to-port {{ forwarded_port.dest }}
+iptables -t nat -I OUTPUT -p tcp -o lo --dport {{ forwarded_port.src }} -j REDIRECT --to-port {{ forwarded_port.dest }}
+{% endfor %}
+{% for forwarded_port in firewall_forwarded_udp_ports %}
+iptables -t nat -I PREROUTING -p udp --dport {{ forwarded_port.src }} -j REDIRECT --to-port {{ forwarded_port.dest }}
+iptables -t nat -I OUTPUT -p udp -o lo --dport {{ forwarded_port.src }} -j REDIRECT --to-port {{ forwarded_port.dest }}
+{% endfor %}
+
+# Open ports and ip 172.23.
+{# Agregar una regla para cada puerto abierto e ip #}
+{% for ips1 in firewall_range_ip1 %}
+{% for port in firewall_allowed_tcp_ports %}
+iptables -A INPUT -p tcp  -s {{ ips1 }} -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% endfor %}
+{% for port in firewall_allowed_udp_ports %}
+iptables -A INPUT -p udp -m udp --dport {{ port }} -j ACCEPT
+{% endfor %}
+
+
+# Open ports 172.21.
+{# Agregar una regla para cada puerto abierto e ip #}
+{% for ips2 in firewall_range_ip2 %}
+{% for port in firewall_allowed_tcp_ports %}
+iptables -A INPUT -p tcp  -s {{ ips2 }} -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% endfor %}
+{% for port in firewall_allowed_udp_ports %}
+iptables -A INPUT -p udp -m udp --dport {{ port }} -j ACCEPT
+{% endfor %}
+
+# Open ports 172.22.
+{# Agregar una regla para cada puerto abierto e ip #}
+{% for ips3 in firewall_range_ip3 %}
+{% for port in firewall_allowed_tcp_ports %}
+iptables -A INPUT -p tcp  -s {{ ips3 }} -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% endfor %}
+{% for port in firewall_allowed_udp_ports %}
+iptables -A INPUT -p udp -m udp --dport {{ port }} -j ACCEPT
+{% endfor %}
+
+# Open ports 172.16.
+{# Agregar una regla para cada puerto abierto e ip #}
+{% for ips4 in firewall_range_ip4 %}
+{% for port in firewall_allowed_tcp_ports %}
+iptables -A INPUT -p tcp  -s {{ ips4 }} -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% endfor %}
+{% for port in firewall_allowed_udp_ports %}
+iptables -A INPUT -p udp -m udp --dport {{ port }} -j ACCEPT
+{% endfor %}
+
+# Open ports 172.29.
+{# Agregar una regla para cada puerto abierto e ip #}
+{% for ips5 in firewall_range_ip5 %}
+{% for port in firewall_allowed_tcp_ports %}
+iptables -A INPUT -p tcp  -s {{ ips5 }} -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% endfor %}
+{% for port in firewall_allowed_udp_ports %}
+iptables -A INPUT -p udp -m udp --dport {{ port }} -j ACCEPT
+{% endfor %}
+
+# Open ports 172.30.
+{# Agregar una regla para cada puerto abierto e ip #}
+{% for ips6 in firewall_range_ip6 %}
+{% for port in firewall_allowed_tcp_ports %}
+iptables -A INPUT -p tcp  -s {{ ips6 }} -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% endfor %}
+{% for port in firewall_allowed_udp_ports %}
+iptables -A INPUT -p udp -m udp --dport {{ port }} -j ACCEPT
+{% endfor %}
+
+# Open ports 172.31.
+{# Agregar una regla para cada puerto abierto e ip #}
+{% for ips7 in firewall_range_ip7 %}
+{% for port in firewall_allowed_tcp_ports %}
+iptables -A INPUT -p tcp  -s {{ ips7 }} -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% endfor %}
+{% for port in firewall_allowed_udp_ports %}
+iptables -A INPUT -p udp -m udp --dport {{ port }} -j ACCEPT
+{% endfor %}
+
+
+# Aceptar icmp ping
+iptables -A INPUT -p icmp -j ACCEPT
+
+# Permitir NTP trafico synchronization.
+iptables -A OUTPUT -p udp --dport 123 -j ACCEPT
+iptables -A INPUT -p udp --sport 123 -j ACCEPT
+
+
+#regla que utiliza el seguimiento de conexiones para reenviar solamente paquetes que esten asociados con una conexión establecida
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Reglas personalizadas adicionales
+{% for rule in firewall_additional_rules %}
+{{ rule }}
+{% endfor %}
+
+
+# Log EVERYTHING (ONLY for Debug).(copia galaxy)
+# iptables -A INPUT -j LOG
+
+###{% if firewall_log_dropped_packets %}
+# Log other incoming requests (all of which are dropped) at 15/minute max.(copia galaxy)
+###iptables -A INPUT -m limit --limit 15/minute -j LOG --log-level 7 --log-prefix "Dropped by firewall: "
+{% endif %}
+
+# Drop all other traffic.
+iptables -A INPUT -j DROP
+

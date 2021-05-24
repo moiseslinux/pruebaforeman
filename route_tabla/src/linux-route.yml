@@ -1,0 +1,10 @@
+---
+
+- hosts: all 
+  become: yes
+  become_user: root
+
+  roles:
+    - { role: roles/linux-route-enroll, tags: ['linux-route'] }
+    
+  

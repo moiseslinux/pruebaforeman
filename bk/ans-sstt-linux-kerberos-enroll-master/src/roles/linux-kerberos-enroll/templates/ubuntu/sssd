@@ -1,0 +1,36 @@
+[users]
+default-home = /home/%D/%U
+default-shell = /bin/bash
+
+[active-directory]
+default-client = sssd
+os-name = Ubuntuprueba
+os-version = 20.04
+
+[service]
+automatic-intall = no
+
+[redocu.lan]
+fully-qualifield-names = yes
+automatic-id-mapping = no
+user-principal = yes
+manage-system = yes
+root@ubuntuprueba2:~# cat /etc/sssd/sssd.conf
+
+[sssd]
+domains = redocu.lan
+config_file_version = 2
+services = nss, pam, ssh
+
+default_shell = /bin/bash
+krb5_store_password_if_offline = True
+cache_credentials = True
+krb5_realm = REDOCU.LAN
+realmd_tags = manages-system joined-with-adcli
+id_provider = ad
+fallback_homedir = /home/%d/%u
+ad_domain = redocu.lan
+use_fully_qualified_names = False
+ldap_id_mapping = True
+access_provider = ad
+ldap_user_ssh_public_key = altSecurityIdentities

@@ -1,0 +1,48 @@
+---
+#- gather_facts: false
+- name: Gather facts on listening ports
+  community.general.listen_ports_facts:
+
+- name: TCP whitelist violation
+  ansible.builtin.debug:
+    msg: TCP port {{ item.port }} by pid {{ item.pid }} violates the whitelist
+  vars:
+    tcp_listen_violations: "{{ ansible_facts.tcp_listen | selectattr('port', 'in', tcp_whitelist) | list }}"
+    tcp_whitelist:
+      - 22
+      - 25
+  loop: "{{ tcp_listen_violations }}"
+
+- name: List TCP ports
+  ansible.builtin.debug:
+    msg: "{{ ansible_facts.tcp_listen  | map(attribute='port') | sort | list }}"
+
+- name: List UDP ports
+  ansible.builtin.debug:
+    msg: "{{ ansible_facts.udp_listen | map(attribute='port') | sort | list }}"
+
+- name: List all ports
+  ansible.builtin.debug:
+    msg: "{{ (ansible_facts.tcp_listen + ansible_facts.udp_listen) | map(attribute='port') | unique | sort | list }}"
+
+
+
+    #- listen_ports_facts:
+    #- debug:
+    #    msg: "{{ tcp_listen }}"
+    #  register: tcp
+    #- copy:
+    #    content: "{{ tcp_listen }}"
+    #    dest: /tmp/test
+    #  delegate_to: localhost
+    #  run_once: true
+   #- local_action: copy content={{ tcp }} dest=/tmp/pp2
+#/etc/ansible/roles/iptables2/roles/vars/hosts/porttcp.yml
+    
+    #- debug:
+    #    msg: "{{ udp_listen }}"
+    #  register: udp
+    #- local_action: copy content={{ udp }} dest=/etc/ansible/roles/iptables2/roles/vars/hosts/portudp.yml
+    #
+   # - name: GENERAR ARCHIVO CONF PORT
+   #   include:  /etc/ansible/roles/port/task/port.yml 

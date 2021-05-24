@@ -1,0 +1,105 @@
+---
+
+#- hosts: all
+#  tasks:
+
+#     - name: debug print all interface ipv4 data
+#       when: "{{ hostvars[ansible_fqdn]['ansible_'~item]['ipv4'] is defined }}"
+#       debug:
+#         msg="{{ hostvars[ansible_fqdn]['ansible_'~item]['ipv4'] | pprint }}"
+#       with_items:
+#         - "{{ ansible_interfaces | map('replace', '-','_') | list }}"
+    
+     - name: Backup interfaces ifcfg-{{ ansible_default_ipv4.interface }}
+       shell: cp /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }} /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}-`date --iso`.bk
+    
+    
+     - name: DNS1 ifcfg-{{ ansible_default_ipv4.interface }}
+       when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+       lineinfile:
+         path: /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}
+         #state: present
+         regexp: 'DNS1="172.16.21.8"'
+         line: "DNS1=172.16.21.137"
+
+     - name: DNS2 ifcfg-{{ ansible_default_ipv4.interface }}
+       when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+       lineinfile:
+         path: /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}
+         #state: present
+         regexp: 'DNS2="172.16.20.2"'
+         line: "DNS2=172.16.21.140"
+         backup: true
+     ##########################################
+
+      - name: DNS1 ifcfg-{{ ansible_default_ipv4.interface }}
+       when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+       lineinfile:
+         path: /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}
+         #state: present
+         regexp: 'DNS1="172.23.21.2"'
+         line: "DNS1=172.23.21.139"
+
+     - name: DNS2 ifcfg-{{ ansible_default_ipv4.interface }}
+       when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+       lineinfile:
+         path: /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}
+         #state: present
+         regexp: 'DNS2="172.23.21.62"'
+         line: "DNS2=172.23.21.138"
+         backup: true
+
+#------------------------------------------------------------------------
+     - name: Backup Resolv
+       shell: cp /etc/resolv.conf /etc/resolv.conf-`date --iso`.bk
+
+     - name: Resolv Editando
+       when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+       lineinfile:
+         path: /etc/resolv.conf
+         regexp: "nameserver 172.16.21.8"
+         line: "nameserver 172.16.21.137"
+         backup: true
+
+     - name: Resolv1 Editando
+       when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+       lineinfile:
+         path: /etc/resolv.conf
+         regexp: "nameserver 172.16.20.2"
+         line: "nameserver 172.16.21.140"
+######################################################
+     - name: Resolv Editando
+       when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+       lineinfile:
+         path: /etc/resolv.conf
+         regexp: "nameserver 172.23.21.2"
+         line: "nameserver 172.23.21.138"
+         backup: true
+
+     - name: Resolv1 Editando
+       when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+       lineinfile:
+         path: /etc/resolv.conf
+         regexp: "nameserver 172.23.21.62"
+         line: "nameserver 172.23.21.139"
+
+
+
+
+     - name:  MACHINE TO DOMAIN
+       shell: echo '{{ dc.admin.pass }}' | kinit "{{ dc.admin.user }}@{{ dc.name }}"
+
+     - name:  MACHINE TO DOMAIN
+       shell: echo '{{ dc.admin.pass }}' |net ads join -U "{{ dc.admin.user }}@{{ dc.name }}"
+
+     - name: MAKE SURE SERVICES ARE RUNNING
+       systemd:
+         state: restarted
+         name: "{{ item }}"
+         enabled: yes
+       loop: "{{ services.common }}"   
+
+
+
+
+##ip link show | grep mode | sed 's/://g' | awk '{print $1,$2}'

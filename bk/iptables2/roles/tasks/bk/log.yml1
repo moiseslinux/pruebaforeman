@@ -1,0 +1,34 @@
+---
+
+
+  - name: stat directories if they exist
+    stat:
+      path: "{{ item }}"
+    with_items:
+       - /var/log/firewall1/
+    register: envi_path.stat.exists
+    when: ansible_distribution == "CentOS"
+ 
+  - name: Crear el FIREWALL
+    file:
+      path: "{{ item }}"
+      state: directory
+    with_items:
+       - /var/log/firewall1/
+    when: envi_path.stat.exists == False and ansible_distribution == "CentOS"
+
+
+
+#  - name: CREA CARPETA FIREWALL
+#    file:
+#      path: "{{ item }}"
+#      state: directory
+#      owner: root
+#      group: root
+#      mode: 0775
+#    with_items:
+#      - /etc/yum.repos.d/repo
+#
+#
+
+...

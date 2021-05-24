@@ -1,0 +1,19 @@
+[SBSM]
+name=SBSM
+baseurl=http://serverforeman.uxxi.net/pulp/repos/UXXI/Library/custom/SBMN/SBMN/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=0
+enabled=1
+
+
+[UXXI_PUPPET6_PUPPET6]
+metadata_expire = 1
+sslclientcert = /etc/pki/entitlement/1276181509856251008.pem
+baseurl = http://serverforeman.uxxi.net/pulp/repos/UXXI/Library/OL7/custom/PUPPET6/PUPPET6
+sslverify = 1
+name = PUPPET6
+sslclientkey = /etc/pki/entitlement/1276181509856251008-key.pem
+gpgkey = http://serverforeman.uxxi.net/katello/api/v2/repositories/6/gpg_key_content
+enabled = 1
+sslcacert = /etc/rhsm/ca/katello-server-ca.pem
+gpgcheck = 1

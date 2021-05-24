@@ -1,0 +1,4 @@
+#!groovy
+@Library('devops-pipeline-library') _
+
+uxxiPipelineCIAnsible()

@@ -1,0 +1,15 @@
+---
+- gather_facts: false
+  hosts: all 
+
+  tasks:
+    - listen_ports_facts:
+
+    #- debug:
+    #   msg: "{{ tcp_listen }}"
+    # register: tcp
+    #- local_action: copy content={{ tcp }} dest=/etc/ansible/roles/iptables2/roles/vars/hosts/porttcp.yml
+
+    - name: List TCP ports
+      ansible.builtin.debug:
+        msg: "{{ ansible_facts.tcp_listen   | sort | list }}"

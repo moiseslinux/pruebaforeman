@@ -1,0 +1,36 @@
+---
+- name: Check if host is already registered
+  uri:
+    url: https://{{ rh_satellite_managed_host_satellite_server_fqdn }}/api/hosts/{{ ansible_fqdn }}
+    user: '{{ rh_satellite_service_account_user }}'
+    password: '{{ rh_satellite_service_account_pass }}'
+    method: GET
+    validate_certs: False
+    force_basic_auth: True
+    use_proxy: False
+    status_code: 200
+    return_content: False
+  register: rh_satellite_managed_host_satellite_server_api_check_rc
+  failed_when: False
+  changed_when: False
+  when:
+    - rh_satellite_managed_host_check_membership
+    - not rh_satellite_managed_host_molecule_dummy
+  no_log: True
+
+- name: Subscribe to Red Hat Satellite if required
+  include_tasks: subscribe.yml
+  when:
+    - (rh_satellite_managed_host_satellite_server_api_check_rc.status | default('200') == 404) or
+      (rh_satellite_managed_host_force_registration)
+    - not rh_satellite_managed_host_unregister
+    - not rh_satellite_managed_host_molecule_dummy
+
+- name: Unsubscribe from Red Hat Satellite if required
+  include_tasks: unsubscribe.yml
+  when:
+    - rh_satellite_managed_host_satellite_server_api_check_rc.status | default('0') == 200
+    - rh_satellite_managed_host_unregister
+    - not rh_satellite_managed_host_molecule_dummy
+
+...

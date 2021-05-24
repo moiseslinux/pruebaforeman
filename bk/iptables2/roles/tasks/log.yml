@@ -1,0 +1,63 @@
+---
+
+  - name: CHECK FIREWALL FILE
+    stat:
+      path: /var/log/firewall/
+    register: stat1_result
+
+  - name: CREAR .LOG FIREWALL
+    file:
+      path: /var/log/firewall/
+      state: directory
+    when: stat1_result.stat.exists == False
+
+
+  - name: CHECK FIREWALL FILE
+    stat:
+      path: /var/log/firewall/iptables.log
+    register: stat_result
+
+  - name: CREAR .LOG FIREWALL
+    file:
+      path: /var/log/firewall/iptables.log
+      owner: root
+      group: root
+      mode: '0600'
+      state: touch
+    when: stat_result.stat.exists == False 
+
+  - name: STOP Rsyslog
+    service:
+      name: rsyslog
+      state: stopped
+      enabled: yes
+
+  - name: EDIT Rsyslog
+    template:
+      src: templates/firewall.conf
+      dest: /etc/rsyslog.d/firewall.conf
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+
+  - name: EDIT Logrotate
+    template:
+      src: templates/firewall
+      dest: /etc/logrotate.d/
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+
+  - name: REINICIO Rsyslog
+    service:
+      name: rsyslog
+      state: started
+      enabled: yes
+
+
+
+...

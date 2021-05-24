@@ -1,0 +1,20 @@
+---
+
+  - name: COPIA ENTORNOS
+    connection: local
+    copy:
+      src: /etc/puppetlabs/code/environments/Produccion/
+      dest: /etc/puppetlabs/code/environments/{{ entorno }}
+
+  - name: SYNC ARSYS
+    shell: rsync -az /etc/puppetlabs/code/environments/{{ entorno }}  --exclude-from="/etc/puppetlabs/code/environments/sync/exclude.txt"  root@h16110.redocu.lan:/etc/puppetlabs/code/environments/
+    delegate_to: localhost
+
+  - name: SYNC AWS
+    shell: rsync -az /etc/puppetlabs/code/environments/{{ entorno }}  --exclude-from="/etc/puppetlabs/code/environments/sync/exclude.txt"  root@ip-172-30-0-195.eu-central-1.compute.internal:/etc/puppetlabs/code/environments/
+    delegate_to: localhost
+
+#rsync
+#-h -v -r -P -t 
+
+...

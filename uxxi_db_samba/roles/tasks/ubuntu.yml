@@ -1,0 +1,83 @@
+---
+
+- name: Gather packages
+  package_facts:
+    manager: auto
+  ignore_errors: yes
+
+- name: MENSAJE
+  debug:
+    msg:
+      - '- COMPROBAR SI SAMBA ESTA INSTALADO'
+            
+
+- name: check if SAMBA is installed
+  shell:  rpm -qa  | grep samba-client*
+  register: samba_installed
+  ignore_errors: True
+  check_mode: False
+  changed_when: False
+
+- name: SAMBA IS INSTALLED
+  debug:
+    msg: "samba is installed"
+  when: samba_installed.rc == 0
+
+- name: SAMBA NOT INSTALLED
+  debug:
+    msg: "samba not installed"
+  when: samba_installed.rc == 1
+  
+      
+########### samba
+
+
+- name: EDIT SMB 
+  template:
+      src: templates/smb.conf
+      dest: /etc/samba/
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+
+
+- name: SAMBA RESTART 
+  systemd:
+    state: started
+    name: smb
+    enabled: yes
+
+
+- name: CREAR USUARIO UXXI
+  user:
+    name: "{{ dc.uxxi.useru }}"
+    shell: /bin/bash
+    state: present
+    update_password: on_create
+    password: "{{ dc.uxxi.passu | password_hash('sha512') }}"
+
+- name: CREAR USUARIO UXXIDB
+  user:
+    name: "{{ dc.uxxidb.useru }}"
+    shell: /bin/bash
+    state: present
+    update_password: on_create
+    password: "{{ dc.uxxidb.passu | password_hash('sha512') }}"
+
+- name: HABILITAR UXXI SAMBA
+  shell: "(echo {{ dc.uxxi.passu }}; echo {{ dc.uxxi.passu }}) | smbpasswd -a uxxi"
+  #shell: (echo "xxxxxx"; echo "xxxxx") | smbpasswd -a uxxi
+
+- name: HABILITAR UXXIDB SAMBA
+  shell: "(echo {{ dc.uxxidb.passu }}; echo {{ dc.uxxidb.passu }}) | smbpasswd -a uxxidb"
+  #shell: (echo "xxxxxx"; echo "xxxxx") | smbpasswd -a uxxi
+
+
+ 
+
+  
+
+
+
+
+

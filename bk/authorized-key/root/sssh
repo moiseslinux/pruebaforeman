@@ -1,0 +1,9 @@
+#!/bin/bash
+echo " inicio copy"
+sshpass -f passw ssh-copy-id -i /root/.ssh/id_rsa root@agentforeman.redocu.lan
+sleep 4
+echo "fin del copy"
+echo "ssh agent y ssh-add"
+eval `ssh-agent`
+ssh-add /root/.ssh/id_rsa
+bash -i # or other session starter

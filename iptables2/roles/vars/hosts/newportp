@@ -1,0 +1,12 @@
+
+
+
+            "port": 139, 
+            "protocol": "tcp", 
+            "port": 749, 
+            "protocol": "tcp", 
+            "port": 464, 
+            "protocol": "tcp", 
+            "port": 22, 
+            "protocol": "tcp", 
+

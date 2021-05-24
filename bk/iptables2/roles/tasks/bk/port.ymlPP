@@ -1,0 +1,69 @@
+---
+  - include_vars: name_vars.yml
+  - name: eliminar el repositorio '*-updates'
+    connection: local
+    lineinfile:
+        path: /tmp/p
+        regexp: "{{ item }}"
+        state: absent
+  #      backup: yes
+    with_items:
+      - "address"
+      - "name"
+      - "pid" 
+      - "stime"
+      - "user"
+      - "}"
+      - "]"
+      - "{"
+      - "TASK "
+      - "ok"
+      - "msg"
+      - "PLAY" 
+  - connection: local
+    shell: cat /tmp/p | grep -v "udp" >> zz 
+  - connection: local
+    shell:  awk '/"port":/{ print $4 }' /tmp/zz  | sort | uniq | fmt >>  /tmp/yy
+ 
+  - name: DELETE FILE TCP
+    connection: local
+    #shell: /bin/rm -rf /etc/ansible/roles/iptables2/roles/vars/hosts/porttcp.yml
+    file: path=/etc/ansible/roles/iptables2/roles/vars/vars.yml* state=absent
+
+  - name: CHECK FIREWALL FILE TCP
+    connection: local
+    shell:  awk '/"port":/{ print $2 }' /etc/ansible/roles/iptables2/roles/vars/hosts/newport  | sort | uniq | fmt >>  /etc/ansible/roles/iptables2/roles/vars/vars.yml
+
+  - name: blanco 
+    connection: local
+    shell: sed -r 's/\s+//g' /etc/ansible/roles/iptables2/roles/vars/vars.yml > /etc/ansible/roles/iptables2/roles/vars/vars.yml1
+  - name: ultimo 
+    connection: local
+    shell:  sed  -e 's/.$//' /etc/ansible/roles/iptables2/roles/vars/vars.yml1 >> /etc/ansible/roles/iptables2/roles/vars/vars.yml2
+
+  - name: TCP
+    connection: local
+  #  shell:  sed -i 's|^|port |g' /etc/ansible/roles/iptables2/roles/vars/hosts/porttcp.yml
+    shell: sed -i "1 s|^|{{ edittcp }}  |"  /etc/ansible/roles/iptables2/roles/vars/vars.yml2 
+
+
+
+#________________________________________________  UDP  _____________________________________________________
+
+
+
+
+#  - name: CHECK FIREWALL FILE UDP
+#    connection: local
+#    shell:  awk '/"port":/{ print $2 }' /tmp/newport | sed  -e 's/.$//' | sort | uniq | fmt >  /etc/ansible/roles/iptables2/roles/vars/hosts/portudp.yml
+#
+#
+#  - name: UDP
+#    connection: local
+#    shell:  sed -i "1 s|^|{{ editudp }}  |" /etc/ansible/roles/iptables2/roles/vars/hosts/portudp.yml
+#
+
+
+
+
+...

@@ -1,0 +1,42 @@
+---
+
+- hosts: all
+  connection: local
+  vars_prompt: 
+    - name: ip-dest
+      prompt: "Ingrese la clave"
+  task:    
+    - name: Backup interfaces route-{{ ansible_default_ipv4.interface }}
+      shell: cp /etc/sysconfig/network-scripts/route-{{ ansible_default_ipv4.interface }} /etc/sysconfig/network-scripts/route-{{ ansible_default_ipv4.interface }}-`date --iso`.bk
+     
+    - name: Edit route-{{ ansible_default_ipv4.interface }}
+      lineinfile:
+        path: /etc/sysconfig/network-scripts/route-{{ ansible_default_ipv4.interface }}
+        state: present
+        line: "{{ ip-dest }}/{{ ansible_default_ipv4.netmask }} via {{ ansible_default_ipv4.gateway}}  dev {{ ansible_default_ipv4.interface }} "
+        backup: true
+
+
+    #- name: configure routes to opposite dev/prod environment so that nodes in both envs can access licence server
+    #  shell: |
+    #     ip route add {{ item.subnet }} via {{ item.next_hop }} dev {{ gatewaynic }}
+    #   with_items:
+    #     - { subnet: "{{ private_subnet1_prod }}", next_hop: "{{ openfirehawkserver_prod }}" }
+    #     - { subnet: "{{ public_subnet1_prod }}", next_hop: "{{ openfirehawkserver_prod }}" }
+    #     - { subnet: "{{ vpn_cidr_prod }}", next_hop: "{{ openfirehawkserver_prod }}" }
+    #   when: envtier == 'dev'
+    #   become: yes
+    #   tags:
+    #     - add-routes    
+
+##ip link show | grep mode | sed 's/://g' | awk '{print $1,$2}'
+
+#- hosts: all
+#  tasks:
+
+#     - name: debug print all interface ipv4 data
+#       when: "{{ hostvars[ansible_fqdn]['ansible_'~item]['ipv4'] is defined }}"
+#       debug:
+#         msg="{{ hostvars[ansible_fqdn]['ansible_'~item]['ipv4'] | pprint }}"
+#       with_items:
+#         - "{{ ansible_interfaces | map('replace', '-','_') | list }}"

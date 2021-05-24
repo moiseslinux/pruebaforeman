@@ -1,0 +1,97 @@
+---
+
+- name: Gather packages
+  package_facts:
+    manager: auto
+  ignore_errors: yes
+
+- name: MENSAJE
+  debug:
+    msg:
+      - '- COMPROBAR SI SAMBA ESTA INSTALADO'
+            
+
+- name: check if SAMBA is installed
+  shell:  rpm -qa  | grep samba-client*
+  register: samba_installed
+  ignore_errors: True
+  check_mode: False
+  changed_when: False
+
+- name: SAMBA IS INSTALLED
+  debug:
+    msg: "samba is installed"
+  when: samba_installed.rc == 0
+
+- name: SAMBA NOT INSTALLED
+  debug:
+    msg: "samba not installed"
+  when: samba_installed.rc == 1
+  
+      
+########### samba
+
+- name: INSTALL BASIC PACKAGES 
+  when: samba_installed.rc == 1
+  yum:
+    name: samba
+    state: latest
+  register: install_aws
+
+
+- name: EDIT SMB 
+  #when: samba_installed.rc == 0 or install_aws.rc == 0
+  template:
+      src: templates/smb.conf
+      dest: /etc/samba/
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+      backup: yes
+  register: edit
+
+- name: RESTART RSYSLOG SERVICE
+  systemd:
+    name: smb
+    state: restarted
+    enabled: yes
+  
+#### crea los usuario uxxi uxxidb el password lo toma desde default 
+#### habilita los usuario en el samba, para que funcione se debe copiar desde default/bk/mail.yml 
+#### a la rail de /default
+#### default/bk/mail.yml es un archivo vaul de ansible 
+
+
+#- name: CREAR USUARIO UXXI
+#  user:
+#    name: "{{ dc.uxxi.useru }}"
+#    shell: /bin/bash
+#    state: present
+#    update_password: on_create
+#    password: "{{ dc.uxxi.passu | password_hash('sha512') }}"
+#
+#- name: CREAR USUARIO UXXIDB
+#  user:
+#    name: "{{ dc.uxxidb.useru }}"
+#    shell: /bin/bash
+#    state: present
+#    update_password: on_create
+#    password: "{{ dc.uxxidb.passu | password_hash('sha512') }}"
+#
+#- name: HABILITAR UXXI SAMBA
+#  shell: "(echo {{ dc.uxxi.passu }}; echo {{ dc.uxxi.passu }}) | smbpasswd -a uxxi"
+#  #shell: (echo "xxxxxx"; echo "xxxxx") | smbpasswd -a uxxi
+#
+#- name: HABILITAR UXXIDB SAMBA
+#  shell: "(echo {{ dc.uxxidb.passu }}; echo {{ dc.uxxidb.passu }}) | smbpasswd -a uxxidb"
+#  #shell: (echo "xxxxxx"; echo "xxxxx") | smbpasswd -a uxxi
+#
+
+ 
+
+  
+
+
+
+
+

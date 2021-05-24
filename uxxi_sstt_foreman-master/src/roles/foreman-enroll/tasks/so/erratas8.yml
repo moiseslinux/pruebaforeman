@@ -1,0 +1,27 @@
+---
+- name: Crear carpetas info
+  file:
+      path: /root/erratas/actual
+      state: directory
+      mode: "u=rwx,g=r,o=r"
+
+- name: Crear carpetas info
+  file:
+      path: /root/erratas/update
+      state: directory
+      mode: "u=rwx,g=r,o=r"
+
+- name: Lista de paq instalados 
+  shell: "{{item}}"
+  with_items:
+    - rpm -qa > /root/erratas/actual/paq_actual.$(date +%y%m%d)
+    - dnf updateinfo list installed > /root/erratas/actual/updateinfo_list_installed.$(date +%y%m%d)
+    - dnf updateinfo summary > /root/erratas/update/update-summary.$(date +%y%m%d)
+    - dnf updateinfo list available > /root/erratas/update/updateinfo-available.$(date +%y%m%d)
+    - dnf info-sec > /root/erratas/update/info-sec.$(date +%y%m%d)
+
+- name: update erratas
+  shell:  "{{item}}"
+  with_items:
+    - dnf --security update -y 
+    - dnf --security --bugfix update -y      

@@ -1,0 +1,16 @@
+---
+  - name: Centos
+    when: ansible_facts['distribution'] == 'CentOS' or ansible_facts['distribution']  == 'OracleLinux' or  ansible_facts['distribution']  == 'RedHat'
+    include: prueba/rpm.yml   
+ 
+#  - name: Oracle
+#    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/oracle.yml
+#    when: ansible_facts['distribution']  == 'OracleLinux'
+#
+#  - name: RedHat
+#    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/redhat.yml
+#    when: ansible_facts['distribution']  == 'RedHat'
+#
+  - name: Ubuntu
+    when: ansible_facts['distribution']  == 'Ubuntu'
+    include: prueba/apt.yml

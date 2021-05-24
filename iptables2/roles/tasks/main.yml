@@ -1,0 +1,367 @@
+---
+- include_vars: name_vars.yml
+
+- name: LOG
+  include: /etc/ansible/roles/iptables2/roles/tasks/log.yml
+
+
+
+- shell: netstat -nap | grep -i java | grep -i listen | grep -i {{ ansible_default_ipv4.address }} | awk '{print $4}' | uniq | grep -v LISTEN | sed -e 's/.*://' | sed -n '1,15 p'
+  register: port 
+- debug:
+    msg: "{{ port.stdout_lines}}"
+  
+
+- local_action: copy content={{ port.stdout_lines }} dest=/etc/ansible/roles/iptables2/roles/vars/java
+
+- name: Borrar Caracteres Especiales
+  connection: local
+  shell: sed 's/[]["]\|[[:space:]]//g' /etc/ansible/roles/iptables2/roles/vars/java >> /etc/ansible/roles/iptables2/roles/vars/java.yml
+  register: pp
+
+        ## Elimina la ultima coma
+        ##- connection: local
+        ##  shell:  sed  -e 's/.$//' /etc/ansible/roles/iptables2/roles/vars/java1 > /etc/ansible/roles/iptables2/roles/vars/java2
+
+# Agrega variable
+- name: CREAR FILE JAVA
+  connection: local
+  shell: sed -i "1 s|^|{{ java }}|" /etc/ansible/roles/iptables2/roles/vars/java.yml 
+  register: texto
+
+# insertar
+#- name: default
+#  connection: local
+#  shell: cat /etc/ansible/roles/iptables2/roles/vars/java.yml >> /etc/ansible/roles/iptables2/roles/defaults/main.yml
+
+  
+#prueba26/10
+- name: prueba
+  connection: local
+  shell: sed 's/$/ /' /etc/ansible/roles/iptables2/roles/vars/java.yml | sed '/firewall_allowed_JAVA_ports/G' >> /etc/ansible/roles/iptables2/roles/defaults/main.yml
+  tags: 
+    - prueba1
+
+################################################################ conf2
+- shell: netstat -nap | grep -i java | grep -i listen | grep -i {{ ansible_default_ipv4.address }} | awk '{print $4}' | uniq | grep -v LISTEN | sed -e 's/.*://' | sed -n '16,29 p'
+  register: port1 
+- debug:
+    msg: "{{ port1.stdout_lines}}"
+  
+
+- local_action: copy content={{ port1.stdout_lines }} dest=/etc/ansible/roles/iptables2/roles/vars/java1
+
+- name: Borrar Caracteres Especiales
+  connection: local
+  shell: sed 's/[]["]\|[[:space:]]//g' /etc/ansible/roles/iptables2/roles/vars/java1 >> /etc/ansible/roles/iptables2/roles/vars/java1.yml
+  register: pp
+
+        ## Elimina la ultima coma
+        ##- connection: local
+        ##  shell:  sed  -e 's/.$//' /etc/ansible/roles/iptables2/roles/vars/java1 > /etc/ansible/roles/iptables2/roles/vars/java2
+
+# Agrega variable
+- name: CREAR FILE JAVA
+  connection: local
+  shell: sed -i "1 s|^|{{ java2 }}|" /etc/ansible/roles/iptables2/roles/vars/java1.yml 
+  register: texto
+
+      #- name: pp
+      #  connection: local
+      #  shell: cat /etc/ansible/roles/iptables2/roles/vars/java.yml >> /etc/ansible/roles/iptables2/roles/vars/java1.yml 
+
+# insertar
+#- name: default
+#  connection: local
+#  shell: cat /etc/ansible/roles/iptables2/roles/vars/java1.yml >> /etc/ansible/roles/iptables2/roles/defaults/main.yml
+ 
+#prueba26/10
+- name: prueba
+  connection: local
+  shell: sed 's/$/ /' /etc/ansible/roles/iptables2/roles/vars/java1.yml | sed '/firewall_allowed_JAVA_ports2/G' >> /etc/ansible/roles/iptables2/roles/defaults/main.yml
+  tags: 
+    - prueba2
+
+- name: Iptables save 
+  shell: iptables-save > /etc/sysconfig/iptables-orig
+
+- name: Iptables flush filter
+  iptables:
+    chain: "{{ item }}"
+    flush: yes
+  with_items:  [ 'INPUT', 'FORWARD', 'OUTPUT' ]
+
+- name: Iptables flush nat
+  iptables:
+    table: nat
+    chain: '{{ item }}'
+    flush: yes
+  with_items: [ 'INPUT', 'OUTPUT', 'PREROUTING', 'POSTROUTING' ]
+
+
+- name: LO 
+  iptables:
+    chain: INPUT
+    in_interface: lo
+    jump: ACCEPT
+  become: yes
+
+- name: FOREMAN specific IP
+  iptables:
+    chain: INPUT
+    source: 172.23.31.86
+    jump: ACCEPT
+    comment: Accept FOREMAN all
+  become: yes
+
+- name: Allow related and established connections
+  iptables:
+    chain: INPUT
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+  become: yes
+
+##################### RULE SSH RSYNC
+- name: Allow new incoming SYN packets on TCP (RSYNC SSH).
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    match: multiport
+    destination_port: "22, 873"
+    ctstate: NEW
+    syn: match
+    jump: ACCEPT
+    source: "{{ firewall_range_ip1 }}, {{ firewall_range_ip2 }}, {{ firewall_range_ip3 }}, {{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}, {{ firewall_range_ip6 }}, {{ firewall_range_ip7 }}"
+    comment: Accept new SSH RSYNC connections
+
+
+
+
+#############################################################
+
+- name: ICMP
+  iptables:
+    chain: INPUT
+    protocol: icmp
+    jump: ACCEPT
+    comment: Accept ICMP
+
+- name: SMB
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    jump: ACCEPT
+    destination_port: 445
+    comment: Accept SAMBA
+  become: yes
+
+    
+- name: Log 22
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: 22 
+    jump: LOG
+    log_prefix: "IPTABLES:INFO: "
+    log_level: 4
+
+###################################################################### 
+#                       Máquinas de AWS 172.30.x.x
+- name: Máquinas de AWS 172.30.x.x (AWS) tcp
+  when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16')
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}"
+    #source: "{{ firewall_range_ip4 }}"
+    match: multiport
+    destination_port: "{{ firewall_TCP_default_ports }}"
+  become: yes
+
+- name: Máquinas de AWS 172.30.x.x (AWS) tcp 2
+  when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16')
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}"
+    #source: "{{ firewall_range_ip4 }}"
+    match: multiport
+    destination_port: "{{firewall_allowed_Admin_ports }}"
+  become: yes
+  
+
+- name: Máquinas de AWS 172.30.x.x (AWS) UDP
+  when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16')
+  iptables:
+    chain: INPUT
+    protocol: udp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}"
+    #source: "{{ firewall_range_ip4 }}"
+    match: multiport
+    destination_port: "{{ firewall_UDP_default_ports }}"
+  become: yes
+ ######################################################################################
+#                           Maquinas 172.16.30.x (SEDE) all port
+- name: Maquinas 172.16.30.x (SEDE) all port 
+  when: ansible_default_ipv4.address | ipaddr('172.16.30.0/16')
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}"
+    destination_port: "{{ firewall_TCP_default_ports }}"
+  become: yes
+
+
+- name: Maquinas 172.16.30.x (SEDE) all port2
+  when: ansible_default_ipv4.address | ipaddr('172.16.30.0/16')
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}"
+    destination_port: "{{firewall_allowed_Admin_ports }}"
+  become: yes
+
+
+- name: Maquinas 172.16.30.x (SEDE) all port UDP
+  when: ansible_default_ipv4.address | ipaddr('172.16.30.0/16')
+  iptables:
+    chain: INPUT
+    protocol: udp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}"
+    match: multiport
+    destination_port: "{{ firewall_UDP_default_ports }}"
+  become: yes
+######################################################################
+#                      Maquinas 172.29.x.x (Telefonica UXXI) all port
+
+- name: Maquinas 172.29.x.x (Telefonica UXXI) all port
+  when: ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}, {{ firewall_range_ip1 }}"
+    match: multiport
+    destination_port: "{{ firewall_TCP_default_ports }}"
+  become: yes
+    
+- name: Maquinas 172.29.x.x (Telefonica UXXI) all port 2
+  when: ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}, {{ firewall_range_ip1 }}"
+    match: multiport
+    destination_port: "{{firewall_allowed_Admin_ports }}"
+  become: yes
+
+
+
+- name: Maquinas 172.29.x.x (Telefonica UXXI) all port UDP
+  when: ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+  iptables:
+    chain: INPUT
+    protocol: udp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}, {{ firewall_range_ip1 }}"
+    match: multiport
+    destination_port: "{{ firewall_UDP_default_ports }}"
+  become: yes
+
+############################################################################ 
+#                          Maquinas 172.23.x.x (Arsys UXXI)  
+- name: Maquinas 172.23.x.x (Arsys UXXI)  all port tcp
+  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16')
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}, {{ firewall_range_ip1 }}"
+    match: multiport
+    destination_port: "{{firewall_allowed_Admin_ports}}"
+  become: yes
+
+
+- name: Maquinas 172.23.x.x (Arsys UXXI)  all port tcp2
+  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16')
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}, {{ firewall_range_ip1 }}"
+    match: multiport
+    destination_port: "{{ firewall_TCP_default_ports }}"
+  become: yes
+    
+
+
+- name: Maquinas 172.23.x.x (Arsys UXXI)  all port UDP
+  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16')
+  iptables:
+    chain: INPUT
+    protocol: udp
+    jump: ACCEPT
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}, {{ firewall_range_ip1 }}"
+    match: multiport
+    destination_port: "{{ firewall_UDP_default_ports }}"
+  become: yes
+
+##########################################################################################################################
+
+- name: PORT JAVA TCP
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}, {{ firewall_range_ip1 }}"
+    match: multiport
+    destination_port: "{{firewall_allowed_JAVA_ports}}"
+    jump: ACCEPT
+    action: insert
+    comment: PORT JAVA
+    rule_num: 11
+  ignore_errors: yes
+
+- name: PORT JAVA TCP 2
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    source: "{{ firewall_range_ip4 }}, {{ firewall_range_ip5 }}, {{ firewall_range_ip1 }}"
+    match: multiport
+    destination_port: "{{firewall_allowed_JAVA_ports2 }}"
+    jump: ACCEPT
+    action: insert
+    comment: PORT JAVA
+    rule_num: 12
+  ignore_errors: yes
+
+- name: DROP COLOMBIA
+  iptables:
+    chain: INPUT
+    source: 192.168.1.0/24 
+    jump: DROP
+    comment: Bloqueo de conexion colombia
+  become: yes
+
+- name: DROP INPUT OTHERS
+  iptables:
+    chain: INPUT
+    jump: DROP
+  become: yes
+
+- name: Iptables save
+  shell: iptables-save > /etc/sysconfig/iptables-new
+
+#- name: DELETE PORT
+#  connection: local
+#  shell: rm -rf {{ item }}
+#  with_items:
+#    - /etc/ansible/roles/iptables2/roles/vars/vars*
+#    - /etc/ansible/roles/iptables2/roles/vars/hosts/tcp*
+#    - /etc/ansible/roles/iptables2/roles/vars/hosts/udp*

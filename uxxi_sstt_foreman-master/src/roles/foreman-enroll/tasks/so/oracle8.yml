@@ -1,0 +1,355 @@
+###################################### ORACLE LINUX  #####################################
+---
+  - debug:
+        msg:
+        - "Distribution {{ hostvars[inventory_hostname].ansible_distribution }}"
+        - "Version {{ hostvars[inventory_hostname].ansible_distribution_version }}"
+
+  - name: Hostname uxxi
+    when: ansible_domain == "redocu.lan"
+    shell: echo {{ ansible_fqdn }} >> /etc/ansible/inventory/uxxi
+    delegate_to: localhost
+
+  - name: Hostname aws
+    when: ansible_domain == "ocuaws.lan"
+    shell: echo {{ ansible_fqdn }} >> /etc/ansible/inventory/aws
+    delegate_to: localhost
+
+  - name: Hostname arsys
+    when: ansible_domain == "ocuarsys"
+    shell: echo {{ ansible_fqdn }} >> /etc/ansible/inventory/arsys
+    delegate_to: localhost
+
+  - name: Erratas
+    include_tasks: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/erratas8.yml
+
+
+  - name: Instalar PYTHON-NETADDR OL8
+    connection: local
+    dnf:
+      name: python-netaddr
+      state: present
+    ignore_errors: yes
+
+  - name: Check y conexion foreman 8140 443 ARSYS
+    when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+    wait_for:
+      host: serverforeman.uxxi.net
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: yes
+    with_items:
+      - 8140
+      - 443
+
+  - name: Check y conexion foreman 8140 443 UXXI
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    wait_for:
+      host: H16110.redocu.lan
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: yes
+    with_items:
+      - 8140
+      - 443
+
+  - name: Check y conexion foreman 8140 443 AWS
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    wait_for:
+      host: serverforeman.uxxi.net
+      port: "{{ item }}"
+      state: started         #El puerto debe estar abierto
+      delay: 0               #no espere antes de la primera verificación (segundos)
+      timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+    ignore_errors: yes
+    with_items:
+      - 8140
+      - 443
+
+
+  - name: Comprobar si existe el environment
+    connection: local
+    stat:
+      path: "/etc/puppetlabs/code/environments/{{ entorno }}"
+    register: envi_path
+    when: ansible_distribution == "OracleLinux" and ansible_distribution_major_version == '8'
+
+  - name: Crear el environment
+    connection: local
+    file: 
+      #path: "/etc/puppetlabs/code/environments/{{ entorno }}"
+      path: "{{ item }}"
+      state: directory
+    with_items:
+    - /etc/puppetlabs/code/environments/{{ entorno }}
+    - /etc/puppetlabs/code/environments/{{ entorno }}/data
+    - /etc/puppetlabs/code/environments/{{ entorno }}/manifest
+    - /etc/puppetlabs/code/environments/{{ entorno }}/modules
+    when: envi_path.stat.exists == False and ansible_distribution == "OracleLinux"
+    
+  - name: proxy hosts aws
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    lineinfile:
+      path: /etc/hosts
+      state: present
+      insertafter: '^foreman'
+      line: 172.30.0.195 ip-172-30-0-195.eu-central-1.compute.internal
+  
+  - name: proxy hosts uxxi
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    lineinfile:
+      path: /etc/hosts
+      state: present
+      insertafter: '^foreman'
+      line: 172.16.32.86 h16110.redocu.lan
+
+  - name: COPY MODULES
+    connection: local
+    copy:
+      src: /etc/puppetlabs/code/environments/Produccion/modules
+      dest: "{{ item }}"
+    with_items:
+    - /etc/puppetlabs/code/environments/{{ entorno }}/
+    when: envi_path.stat.exists == False and ansible_distribution == "OracleLinux"
+
+  #- name: CREA CARPETA REPO
+  #  file:
+  #    path: "{{ item }}"
+  #    state: directory
+  #    owner: root
+  #    group: root
+  #    mode: 0775
+  #  with_items:
+  #    - /etc/yum.repos.d/repo
+
+  #- name: Move /etc/yum.repos.d
+  #  shell: mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/repo/
+
+
+  - name: EDIT REPO INSTALL
+    copy:
+      src: templates/install8.repo
+      dest: /etc/yum.repos.d
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r 
+   
+  #- name: COPY README_UXXI
+  #  copy:
+  #    src: templates/README_UXXI
+  #    dest: /etc/yum.repos.d/
+  #    owner: root
+  #    group: root
+  #    mode: u=rw,g=r,o=r
+  #  ignore_errors: yes
+
+  - name: UNINSTALL PACKAGES OL8
+    dnf:
+      name: "{{ software_uninstall.packages}}"
+      state: absent
+    when: ansible_distribution == "OracleLinux"
+    ignore_errors: yes
+  
+  - name: EDIT YUN.CONF
+    lineinfile:
+      path: /etc/yum.conf
+      state: present
+      insertafter: '^installonly_limit'
+      line: 'exclude=rhn-client-tools-2.0.2-24.0.7.el7.x86_64 rhn*'
+
+
+  - name: SINCRONIZAR HORA
+    dnf:
+      name: "{{ software_install_9.packages}}"
+      state: present
+
+  - name: INSTALANDO NTP
+    wait_for:
+      timeout: 10
+
+  #- name: AJUSTE DE HORA
+  #  shell: /usr/sbin/ntpdate 2.europe.pool.ntp.org
+  #  ignore_errors: yes
+  - name: AJUSTE DE HORA
+    lineinfile:
+      path: /etc/chrony.conf
+      regexp: '^pool'
+      line: "{{ item }}"
+    with_items:
+      - es.pool.ntp.org iburst 
+
+
+  #- name: EDIT SBSM REPO
+  #  when: ansible_distribution == "OracleLinux"
+  #  copy:
+  #    src: templates/SBSM8.repo
+  #    dest: /etc/yum.repos.d
+  #    owner: root
+  #    group: root
+  #    mode: u=rw,g=r,o=r
+
+  - name: INSTALL PACKAGES 1  python-dateutil
+    when: ansible_distribution == "OracleLinux"
+    dnf:
+      name: "{{ software_install_ol8.packages}}"
+      state: present
+    tags:
+      - PACKAGES1
+    ignore_errors: yes
+
+  - name: INSTALL PACKAGES 7 PUPPET
+    when: ansible_facts['distribution'] == "OracleLinux"
+    dnf:
+      name: "{{ software_install_7.packages}}"
+      state: present
+      disable_gpg_check: yes
+    tags:
+      - yum
+  
+  - name: EDIT EXPORT VAEDIT EXPORT VARR
+    shell: export PATH=/opt/puppetlabs/bin/:$PATH
+  
+  - name: STOP PUPPET
+    service:
+      name: puppet
+      state: stopped
+
+
+  - name: EDIT PUPPET 172.23-21 ARSYS
+    when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+    template:
+      src: templates/172.23-21/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+
+  - name: EDIT PUPPET 172.16-29 UXXI
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    template:
+      src: templates/172.16-29/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+
+  - name: EDIT PUPPET 172.30-31 AWS
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    template:
+      src: templates/172.30-31/puppet.conf
+      dest: /etc/puppetlabs/puppet
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+    tags:
+      - templates
+
+  - name: REINICIO PUPPET
+    service:
+      name: puppet
+      state: started
+      enabled: yes
+
+
+
+  - name: EDIT OL8 REPO (DISABLED)
+    when: ansible_distribution == "OracleLinux"
+    yum_repository:
+      name: ol8_latest
+      baseurl: http://serverforeman.uxxi.net/pulp/repos/UXXI/Library/custom/OL8/OL8-Latest/
+      description: Oracle Linux $releasever Latest ($basearch)
+      gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+      gpgcheck: yes
+      enabled: no
+      file: public-yum-ol8
+
+
+  - name: INSTALL PACKAGES 2 python-rhsm subscription-manager.x86_64 katello-serverforeman
+    when: ansible_facts['distribution'] == "OracleLinux"
+    dnf:
+      name: "{{ software_install_2.packages}}"
+      disablerepo: ol8_latest
+      state: present
+    tags:
+      - yum
+    ignore_errors: yes
+
+  #- name: Download ARSYS 
+  #  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+  #  get_url:
+  #    url: http://serverforeman.uxxi.net/pub/katello-ca-consumer-latest.noarch.rpm
+  #    dest: /tmp/
+    
+  - name: KATELLO RPM DESCARGAR 172.23-21 ARSYS
+    when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+    shell:
+      yum install -y http://serverforeman.uxxi.net/pub/katello-ca-consumer-latest.noarch.rpm
+      #state: present
+    ignore_errors: yes
+
+  - name: KATELLO RPM DESCARGAR 172.16-29 UXXI
+    when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+    #dnf:
+    shell:
+      yum install -y http://H16110.redocu.lan/pub/katello-ca-consumer-latest.noarch.rpm
+      #state: present
+    ignore_errors: yes
+
+  - name: KATELLO RPM DESCARGAR 172.30-31 AWS
+    when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+    dnf:
+      name: http://serverforeman.uxxi.net/pub/katello-ca-consumer-latest.noarch.rpm
+      state: present
+    ignore_errors: yes 
+ 
+  #- name: SM REGISTER
+  #  when: ansible_distribution == "OracleLinux"
+  #  redhat_subscription:
+  #    state: present
+  #    activationkey: OL8
+  #    org_id: UXXI
+  #  ignore_errors: yes
+
+  - name: INSTALL PACKAGES 3 katello-host-tools 
+    when: ansible_distribution == "OracleLinux"
+    dnf:
+      name: "{{ software_install_3.packages}}"
+      state: present
+      disable_gpg_check: yes
+    tags:
+      - PACKAGES3
+    ignore_errors: yes
+
+  - name: BORRAR INSTALL REPO
+    file:
+      path: /etc/yum.repos.d/install8.repo
+      state: absent
+      
+  - name: REINICIO PUPPET
+    service:
+      name: puppet
+      state: restarted
+
+  - name: REINICIO GOFERD
+    service:
+      name: goferd.service
+      state: restarted
+    ignore_errors: yes
+
+  - name: YUM CLEAN
+    shell: yum clean all
+
+  - name: YUM REPOLIST
+    shell: yum repolist
+
+#  - name: SYNC
+#    include: /etc/ansible/roles/uxxi_sstt_foreman-master/src/roles/foreman-enroll/tasks/so/sync.yml
+

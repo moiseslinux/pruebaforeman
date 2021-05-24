@@ -1,0 +1,58 @@
+---
+- name: Clean subscription manager and yum cache
+  command: subscription-manager clean; subscription-manager remove --all; yum clean all
+  args:
+    warn: False
+  failed_when: False
+  when: rh_satellite_managed_host_cleanup_prior_registration
+
+- name: Install the Katello CA Consumer rpm
+  yum:
+    name: '{{ rh_satellite_managed_host_katello_ca_consumer_rpm_url }}'
+    state: present
+
+- name: Subscribe to Red Hat Satellite if required
+  redhat_subscription:
+    state: present
+    activationkey: '{{ rh_satellite_managed_host_activation_key }}'
+    org_id: '{{ rh_satellite_managed_host_organization }}'
+    server_insecure: '{{ rh_satellite_managed_host_satellite_server_insecure | string }}'
+    auto_attach: True
+    force_register: '{{ rh_satellite_managed_host_force_registration | string }}'
+  notify: start_restart_goferd
+
+- name: Enable all entitled repositories
+  command: subscription-manager repos --enable='*'
+  args:
+    warn: False
+  changed_when: False
+
+- name: Install required packages
+  yum:
+    name: '{{ rh_satellite_managed_host_required_packages }}'
+    state: present
+  notify: start_restart_goferd
+
+- name: Deploy insights-client configuration
+  template:
+    src: insights-client.conf.j2
+    dest: /etc/insights-client/insights-client.conf
+    owner: root
+    group: root
+    mode: '0600'
+  when: rh_satellite_managed_host_insights_register
+
+- name: Register insights-client
+  command: insights-client {% if rh_satellite_managed_host_insights_force_registration %}--force-reregister{% else %}--register{% endif %}
+  args:
+    warn: False
+  when: rh_satellite_managed_host_insights_register
+  notify: start_restart_insights
+
+- name: Katello tracer upload
+  command: katello-tracer-upload
+  args:
+    warn: False
+  changed_when: False
+
+...

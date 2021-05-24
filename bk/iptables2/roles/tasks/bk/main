@@ -1,0 +1,45 @@
+---
+- name: Iptables install
+  package: name=iptables state=present
+
+- name: Flush iptables clean.
+  command: >
+    iptables -F
+    creates=/etc/firewall.bash
+
+- name: Copia firewall script 
+  template:
+    src: firewall.bash.j2
+    dest: /etc/firewall.bash
+    owner: root
+    group: root
+    mode: 0744
+  notify: restart firewall
+
+- name: Copia firewall init script 
+  template:
+    src: firewall.init.j2
+    dest: /etc/init.d/firewall
+    owner: root
+    group: root
+    mode: 0755
+  when: "ansible_service_mgr != 'systemd'"
+
+- name: Copia firewall systemd  (para systemd systems)
+  template:
+    src: firewall.unit.j2
+    dest: /etc/systemd/system/firewall.service
+    owner: root
+    group: root
+    mode: 0644
+  when: "ansible_service_mgr == 'systemd'"
+
+- name: Config firewall service
+  service:
+    name: firewall
+    state: "{{ firewall_state }}"
+    enabled: "{{ firewall_enabled_at_boot }}"
+
+##copia galaxy
+- import_tasks: disable-other-firewalls.yml
+  when: firewall_disable_firewalld or firewall_disable_ufw

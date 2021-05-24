@@ -1,0 +1,32 @@
+---
+- hosts: all
+  vars:
+    sudoers:
+      #- user1
+      #- user2
+      - deploy
+  tasks:
+    - name: Asegúrese de que tengamos un grupo de 'deploy'
+      group:
+        name: deploy
+        state: present
+
+    - name: Permitir que el grupo 'deploy' tenga sin contraseña sudo
+      lineinfile:
+        path: /etc/sudoers
+        line: 'deploy ALL=(ALL) NOPASSWD: ALL'
+
+    - name: Agregar usuarios de sudoers a grupo deploy
+      user:
+        name: "{{ item }}"
+        groups: deploy
+        append: yes
+      with_items: "{{ sudoers }}"
+  tasks:
+    - name: copiar key
+      authorized_key_list:
+        name: root
+        authorized_keys:
+          - key: "{{ lookup('file', '~foreman-proxy/.ssh/id_rsa_foreman_proxy.pub') }}"
+            state: present
+...

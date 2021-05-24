@@ -1,0 +1,15 @@
+---
+- hosts: all
+  tasks:
+
+    - name: Destroy virbr0
+      shell: virsh net-destroy default  
+
+    - name: Disable config
+      shell: virsh net-autostart default --disable
+
+    - name: Stop service libvirtd
+      shell: systemctl stop libvirtd
+
+    - name: Disable libvirtd
+      shell: systemctl disable libvirtd.service

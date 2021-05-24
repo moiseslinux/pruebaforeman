@@ -1,0 +1,28 @@
+---
+galaxy_info:
+  author: Kasra Amirsarvari
+  description: Manage membership of managed host for Red Hat Satellite.
+  company: N/A
+  license: license (BSD, MIT)
+  min_ansible_version: 2.7
+  platforms:
+    - name: Fedora
+      versions:
+        - 28
+        - 29
+        - 30
+        - 31
+    - name: EL
+      versions:
+        - 7
+        - 8
+  galaxy_tags:
+    - satellite
+    - membership
+    - subscription
+    - activation
+    - repositories
+
+dependencies: []
+
+...

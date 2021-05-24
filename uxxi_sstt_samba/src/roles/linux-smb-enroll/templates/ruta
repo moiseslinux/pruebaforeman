@@ -1,0 +1,13 @@
+[{{ comment }}]
+        comment = {{ comment }}
+        path = {{ path }}
+        valid users = oroot {{ user }}
+        write list = oroot {{ user }}
+        force user = {{ force }}
+        create mask = 0775
+        directory mask = 0775
+        browsable = yes
+        guest ok = yes
+        read only = no
+        inherit acls = Yes
+

@@ -1,0 +1,796 @@
+
+
+- name: Gather packages
+  package_facts:
+    manager: auto
+  ignore_errors: yes
+
+
+#- name: Print the rpm packages
+#  debug:
+#    var: ansible_facts.packages
+
+- name: Instalar PYTHON-NETADDR
+  when: ansible_os_family == "RedHat" or ansible_distribution == 'Amazon'
+  connection: local
+  yum:
+    name: python-netaddr
+    state: present
+  ignore_errors: yes
+
+- name: Check puertos y conexion ldap 636  dns 53 port 88 445 135  ARSYS
+  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+  wait_for:
+    host: "{{ dc.machinearsys }}"
+    port: "{{ item }}"
+    state: started         #El puerto debe estar abierto
+    delay: 0               #no espere antes de la primera verificación (segundos)
+    timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+  #ignore_errors: yes
+  with_items:
+    - 53
+    - 636
+    - 88
+    - 445
+    - 135
+
+- name: Check y conexion  ldap 636  dns 53 port 88 445 135 AWS
+  when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+  wait_for:
+    host: "{{ dc.machineuxxiaws }}"
+    port: "{{ item }}"
+    state: started         #El puerto debe estar abierto
+    delay: 0               #no espere antes de la primera verificación (segundos)
+    timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+  #ignore_errors: yes
+  with_items:
+    - 53
+    - 636
+    - 88
+    - 445
+    - 135
+
+
+- name: Check y conexion  ldap 636  dns 53 port 88 445 135 UXXI
+  when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+  wait_for:
+    host: "{{ dc.machineuxxiaws  }}"
+    port: "{{ item }}"
+    state: started         #El puerto debe estar abierto
+    delay: 0               #no espere antes de la primera verificación (segundos)
+    timeout: 1            # Dejar de comprobar después del tiempo de espera (seg)
+#  #ignore_errors: yes
+  with_items:
+    - 53
+    - 636
+    - 88
+    - 445
+    - 135
+######################ELIMINAR DEL REGISTRO DE DOMINIO ANTERIOR CON KERBEROS##########
+- name: MENSAJE
+  debug:
+    msg:
+      - '- COMPROBAR SI ESTA REGISTRADA EN EL DOMINIO'
+      - '- Se comprueba si la maquina esta registrada en el dominio con keberos'
+      - '- Si la maquina no esta registrada salta los procesos'
+        
+- name: check if keberos is installed
+  shell: rpm -qa | grep krb5-server
+  register: keberos_installed
+  ignore_errors: True
+  check_mode: False
+  changed_when: False
+
+- name: KEBEROS IS INSTALLED
+  debug:
+    msg: "keberos is installed"
+  when: keberos_installed.rc == 0
+  
+- name: Keberos not installed
+  when: keberos_installed.rc == 1
+  debug: 
+    msg: "keberos not installed"
+
+- name: ELIMINAR DEL REGISTRO CON KERBEROS
+  when: keberos_installed.rc == 0
+  shell: echo '{{ dc.admin.pass }}' |  net ads leave -U "{{ dc.admin.user }}@{{ dc.name }}"
+  #net ads leave -U intlinuxldap@REDOCU.LAN
+  ignore_errors: yes
+
+- name: DESINSTALATAR PAQUETES KEBEROS
+  when: keberos_installed.rc == 0
+  yum:
+    name: "{{ software_packages_renove.packages}}"
+    state: absent
+  tags:
+    - removekrb
+  #ignore_errors: yes
+- name: BORRAR HOME
+  when: keberos_installed.rc == 0
+  shell: rm -rf /home/REDOCU
+  tags:
+    - remove
+
+- name: MAKE SURE SERVICES ARE RUNNING
+  when: keberos_installed.rc == 0
+  systemd:
+    state: restarted
+    name: "{{ item }}"
+    enabled: yes
+  loop: "{{ services.remove }}"
+
+- name: check if realm is installed
+  shell: rpm -qa | grep realmd
+  register: realm_installed
+  ignore_errors: True
+  check_mode: False
+  changed_when: False
+
+- name: REALM IS INSTALLED
+  debug:
+    msg: "realm is installed"
+  when: realm_installed.rc == 0
+  
+- name: realm not installed
+  when: realm_installed.rc == 1
+  debug: 
+    msg: "realm not installed"
+
+- name: DESINSTALATAR PAQUETES SSSD
+  when: realm_installed.rc == 0
+  yum:
+    name: "{{ software_packages_remove_sssd.packages }}"
+    state: absent
+  tags:
+    - removessd
+
+- name: DESINSTALATAR PAQUETES SSSD 8
+  when: realm_installed.rc == 0 and ansible_os_family == "RedHat" and ansible_distribution_major_version == '8'
+  yum:
+    name: "{{ software_packages_remove_sssd.packages}}"
+    state: absent
+  tags:
+    - removessd8
+    
+- name: BORRAR HOME
+  when: realm_installed.rc == 0
+  shell: rm -rf /home/REDOCU
+ 
+
+- name: MENSAJE2
+  debug:
+    msg:
+      - 'SE INICIA EL REGISTRO AL AD CON LDAP'
+      
+
+############################ INSTALACION ##############################
+
+
+- name: INSTALL BASIC PACKAGES AMAZON
+  when: ansible_distribution == 'Amazon' and  ansible_distribution_major_version == '2'
+  yum:
+    name: "{{ software_ldap.packages}}"
+    state: present
+  #ignore_errors: yes
+
+- name: INSTALL BASIC PACKAGES CENTOS8 ORACLE8 REDHAT8
+  #when: ansible_distribution == 'OracleLinux' and  ansible_distribution_major_version == '8'
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '8'
+  dnf:
+    name: "{{ software_ldap8.packages}}"
+    state: present
+  #ignore_errors: yes
+
+- name: INSTALL BASIC PACKAGES CENTOS ORACLE REDHAT
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '7' or ansible_os_family == "RedHat" and ansible_distribution_major_version == '6'
+  yum:
+    name: "{{ software_ldap.packages}}"
+    state: present
+  tags:
+    - yum
+ # ignore_errors: yes
+
+- name: RESOLV
+  lineinfile:
+    path: /etc/resolv.conf
+    #state: present
+    regexp: '^nameserver'
+    line: '#Active Directory-DNS'
+
+- name: RESOLV-2
+  lineinfile:
+    path: /etc/resolv.conf
+    #state: present
+    regexp: '^nameserver'
+    line: ''
+
+- name: EDIT RESOLV UXXI 
+  when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+  lineinfile:
+    path: /etc/resolv.conf
+    state: present
+    line: "{{ item }}"
+  loop: "{{ dc.nameserver_uxxi }}"
+
+- name: EDIT RESOLV ARSYS
+  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+  lineinfile:
+    path: /etc/resolv.conf
+    state: present
+    line: "{{ item }}"
+  loop: "{{ dc.nameserver_arsys }}"
+
+- name: EDIT RESOLV AWS
+  when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+  lineinfile:
+    path: /etc/resolv.conf
+    state: present
+    insertafter: '^search'
+    line: "{{ item }}"
+  loop: "{{ dc.nameserver_aws }}"
+
+
+######### PAM  ########
+- name: EDIT password-auth-ac
+  #when: keberos_installed.rc == 0
+  copy:
+    src: templates/pam/password-auth-ac
+    dest: /etc/pam.d/password-auth-ac
+    owner: root
+    group: root
+    mode: 0600
+    backup: yes
+
+- name: EDIT system-auth-ac
+  #when: keberos_installed.rc == 0
+  copy:
+    src: templates/pam/system-auth-ac
+    dest: /etc/pam.d/system-auth-ac
+    owner: root
+    group: root
+    mode: 0600
+    backup: yes
+
+- name: EDIT system-auth 8
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '8'
+  copy:
+    src: templates/pam/system-auth8
+    dest: /etc/authselect/system-auth
+    owner: root
+    group: root
+    mode: 0600
+    backup: yes
+
+- name: EDIT password-auth 8
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '8'
+  copy:
+    src: templates/pam/password-auth8
+    dest: /etc/authselect/password-auth
+    owner: root
+    group: root
+    mode: 0600
+    backup: yes
+
+#######################
+- name: EDIT NSCD
+  #when: keberos_installed.rc == 0
+  copy:
+    src: templates/nscd.conf
+    dest: /etc/nscd.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: EDIT NSLCD_ARSYS
+  #when: keberos_installed.rc == 0
+  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+  copy:
+    src: templates/nslcd-arsys.conf
+    dest: /etc/nslcd.conf
+    owner: root
+    group: root
+    mode: 0600
+    backup: yes
+
+- name: EDIT NSLCD_UXXI
+  #when: keberos_installed.rc == 0
+  when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+  copy:
+    src: templates/nslcd-uxxi.conf
+    dest: /etc/nslcd.conf
+    owner: root
+    group: root
+    mode: 0600
+    backup: yes
+
+- name: EDIT NSLCD_AWS
+  #when: keberos_installed.rc == 0
+  when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+  copy:
+    src: templates/nslcd-uxxi.conf
+    dest: /etc/nslcd.conf
+    owner: root
+    group: root
+    mode: 0600
+    backup: yes
+
+- name: EDIT LDAP_ARSYS
+  #when: keberos_installed.rc == 0
+  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+  copy:
+    src: templates/ldapasrsys.conf
+    dest: /etc/openldap/ldap.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+
+- name: EDIT LDAP_UXXI
+  #when: keberos_installed.rc == 0
+  when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+  copy:
+    src: templates/ldapuxxi.conf
+    dest: /etc/openldap/ldap.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+
+- name: EDIT LDAP_AWS
+  #when: keberos_installed.rc == 0
+  when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+  copy:
+    src: templates/ldapuxxi.conf
+    dest: /etc/openldap/ldap.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+
+    #######################
+- name: EDIT CERT_ARSYS
+  #when: keberos_installed.rc == 0
+  when: ansible_default_ipv4.address | ipaddr('172.23.0.0/16') or ansible_default_ipv4.address | ipaddr('172.21.0.0/16')
+  copy:
+    src: templates/SSCert.pem
+    dest: /etc/openldap/cacerts/
+    owner: root
+    group: root
+    mode: 0700
+    backup: yes
+
+- name: EDIT CERT_UXXI
+  #when: keberos_installed.rc == 0
+  when: ansible_default_ipv4.address | ipaddr('172.16.0.0/16') or ansible_default_ipv4.address | ipaddr('172.29.0.0/16')
+  copy:
+    src: templates/SSCert.pem
+    dest: /etc/openldap/cacerts/
+    owner: root
+    group: root
+    mode: 0700
+    backup: yes
+
+- name: EDIT CERT_AWS
+  #when: keberos_installed.rc == 0
+  when: ansible_default_ipv4.address | ipaddr('172.30.0.0/16') or ansible_default_ipv4.address | ipaddr('172.31.0.0/16')
+  copy:
+    src: templates/SSCert.pem
+    dest: /etc/openldap/cacerts/
+    owner: root
+    group: root
+    mode: 0700
+    backup: yes   
+
+
+   #######################
+- name: EDIT NSSWITCH
+  #when: keberos_installed.rc == 0
+  copy:
+    src: templates/nsswitch.conf
+    dest: /etc/nsswitch.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  
+- name: EDIT authconfig 
+  #when: keberos_installed.rc == 0
+  copy:
+    src: templates/authconfig 
+    dest: /etc/authconfig
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+
+- name: NSLCD RELOAD
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '7' or  ansible_os_family == "RedHat" and ansible_distribution_major_version == '8'
+  #when: keberos_installed.rc == 1
+  systemd:
+    name: nslcd
+    state: restarted
+    enabled: yes
+
+- name: NSCD RELOAD
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '7' or  ansible_os_family == "RedHat" and ansible_distribution_major_version == '8'
+  #when: keberos_installed.rc == 1
+  systemd:
+    name: nscd
+    state: restarted
+    enabled: yes
+
+- name: NSLCD RELOAD V6
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '6' 
+  ansible.builtin.service:
+    name: nslcd
+    enabled: yes
+    state: restarted    
+
+- name: NSCD RELOAD V6
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '6' 
+  ansible.builtin.service:
+    name: nscd
+    enabled: yes
+    state: restarted        
+##################
+
+- name: LIST GETENT
+  shell: getent passwd astaroldap3
+  register: realm
+  ignore_errors: yes
+  
+- debug: var=realm.stdout_lines
+
+- name: LOGIN
+  shell: id astaroldap3
+  #@redocu.lan
+  #echo 'id ; exit' |su - "{{ dc.admin.user }}"
+  ignore_errors: yes
+  register: user
+
+- debug: var=user.stdout_lines
+################################
+
+- name: EDIT SSHD1
+  when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^GSSAPIAuthentication'
+    line: 'GSSAPIAuthentication no'
+    backup: yes
+
+- name: EDIT SSHD2
+  when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PasswordAuthentication'
+    line: 'PasswordAuthentication yes'
+
+- name: EDIT SSHD3
+  when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^KerberosAuthentication'
+    line: 'KerberosAuthentication yes'
+
+- name: EDIT SSHD USER STAIL
+  lineinfile: 
+    path: /etc/ssh/sshd_config
+    insertafter: AuthorizedKeysFile 
+    line: 'AllowGroups stail root SSTT-Infraestructura o_todos_espa'
+    backup: yes
+
+- name: SSHD RELOAD
+  when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  systemd:
+    name: sshd
+    state: restarted
+    enabled: yes
+
+- name: INSTALL NTP
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '7'
+  yum:
+    name: ntp
+    state: present
+
+- name: INSTALL  chrony
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '8'
+  yum:
+    name:  chrony
+    state: present
+  
+
+- name: MAKE  NTPD SERVICE IS RUNNING
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '7'
+  #when: keberos_installed.rc == 1
+  systemd:
+    state: started
+    name: ntpd
+    enabled: yes
+  ignore_errors: yes
+  
+- name: MAKE  chrony SERVICE IS RUNNING
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == '8'
+  #when: keberos_installed.rc == 1
+  systemd:
+    state: started
+    name: chronyd
+    enabled: yes
+  ignore_errors: yes
+
+- name: SSHD RELOAD
+  when: keberos_installed.rc == 1
+  systemd:
+    name: sshd
+    state: reloaded
+#######################################
+- name: EDIT SUDO USER SSTT
+  lineinfile: 
+    path: /etc/sudoers
+    line: '%SSTT-Infraestructura ALL=(ALL) NOPASSWD: ALL'
+    backup: yes
+
+- name: EDIT SUDO USER 
+  lineinfile: 
+    path: /etc/sudoers
+    line: '%o_todos_espa ALL=(ALL) NOPASSWD: ALL'
+    backup: yes    
+
+- name: EDIT SUDO USER STAIL
+  lineinfile: 
+    path: /etc/sudoers
+    line: 'stail ALL=(ALL) NOPASSWD: ALL'
+    backup: yes
+########### samba
+
+- name: check if SAMBA is installed
+  shell:  rpm -qa  | grep samba
+  register: samba_installed
+  ignore_errors: True
+  check_mode: False
+  changed_when: False
+
+- name: SAMBA IS INSTALLED
+  debug:
+    msg: "samba is installed"
+  when: samba_installed.rc == 0
+
+- name: SAMBA NOT INSTALLED
+  debug:
+    msg: "samba not installed"
+  when: samba_installed.rc == 1
+  
+- name: EDIT SMB (DELETE line smb.conf)
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  lineinfile:
+    path: /etc/samba/smb.conf
+    state: absent
+    regexp: "{{ item }}"
+  loop: "{{ dc.smblinesde }}"
+
+- name: EDIT SMB (SECURITY)
+  #when: keberos_installed.rc == 1 or realm_installed.rc == 1 or samba_installed.rc == 1
+  when: samba_installed.rc == 0
+  lineinfile:
+    path: /etc/samba/smb.conf
+    insertafter: "workgroup"
+    regexp: '^\s*security =.*$'
+    line: "\tsecurity = user"
+
+- name: EDIT SMB (WORKGROUP)
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  lineinfile:
+    path: /etc/samba/smb.conf
+    insertbefore: "security"
+    regexp: '^\s*workgroup =.*$'
+    line: "\tworkgroup = UXXI"
+    backup: true
+
+
+- name: EDIT SMB (ADD line smb.conf)
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  lineinfile:
+    path: /etc/samba/smb.conf
+    insertafter: "workgroup"
+    state: present
+    line: "\t{{ item }}"
+  loop: "{{ dc.smblines }}"
+
+
+- name: AGREGAR GRUPO DE AD VALID USERS ORACLE12
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  shell: sed -i '/valid users =/ s/ooracle12/ uxxidb/' /etc/samba/smb.conf
+
+- name: AGREGAR GRUPO DE AD VALID USERS ORACLE12
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  shell: sed -i '/write list =/ s/ooracle12/ uxxidb/' /etc/samba/smb.conf
+#- name: AGREGAR GRUPO DE AD VALID USERS
+#  when: keberos_installed.rc == 1 and realm_installed.rc == 1
+#  shell: sed -i '/valid users =/ s/$/ uxxi/' /etc/samba/smb.conf
+
+
+####
+- name: AGREGAR GRUPO DE AD WRITE LIST ORA12AS
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  shell: sed -i '/valid users =/ s/oora12as/ uxxi/' /etc/samba/smb.conf
+
+
+- name: AGREGAR GRUPO DE AD WRITE LIST ORA12AS
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  shell: sed -i '/write list =/ s/oora12as/ uxxi/' /etc/samba/smb.conf
+#####
+
+- name: AGREGAR GRUPO DE AD WRITE LIST ORACLE
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  shell: sed -i '/write list =/ s/ooracle/ uxxi/' /etc/samba/smb.conf
+
+- name: AGREGAR GRUPO DE AD VALID USERS ORACLE
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  shell: sed -i '/valid users =/ s/ooracle/ uxxi/' /etc/samba/smb.conf
+
+- name: DELETE DOMAINUSERS GROUP
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  shell: sed -i 's/@"domain users"//g' "/etc/samba/smb.conf"
+
+- name: DELETE DOMAINUSERS GROUP2
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  shell: sed -i 's/@//g' "/etc/samba/smb.conf"
+
+- name: DELETE O_TODOS GROUP
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  shell: sed -i 's/o_todos//g' "/etc/samba/smb.conf"
+  
+
+- name: DELETE @O_TODOS GROUP
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  when: samba_installed.rc == 0
+  shell: sed -i 's/@o_todos//g' "/etc/samba/smb.conf"
+  
+
+- name: MAKE SURE SAMBA SERVICE IS RUNNING
+  #when: keberos_installed.rc == 1
+  when: samba_installed.rc == 0
+  systemd:
+    state: started
+    name: smb
+    enabled: yes
+
+- name: check if WINBIND is installed
+  shell:  rpm -qa  | grep samba-winbind.x86_64
+  register: winbind_installed
+  ignore_errors: True
+  check_mode: False
+  changed_when: False
+
+- name: WINBIND IS INSTALLED
+  debug:
+    msg: "winbind is installed"
+  when: winbind_installed.rc == 0
+
+- name: WINBIND NOT INSTALLED
+  debug:
+    msg: "winbind not installed"
+  when: winbind_installed.rc == 1
+
+- name: MAKE SURE WINBIND SERVICE IS RUNNING
+  when: winbind_installed.rc == 0
+  systemd:
+    state: started
+    name: winbind
+    enabled: yes
+
+- name: EDIT PAM_WINBIND
+  when: samba_installed.rc == 0
+  copy:
+    src: templates/pam_winbind.conf
+    dest: /etc/security/pam_winbind.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes 
+
+- name: EDIT NSSWITCH
+  when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  copy:
+    src: templates/nsswitch.conf
+    dest: /etc/nsswitch.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: MAKE SURE SERVICES ARE RUNNING
+  when: samba_installed.rc == 0 and winbind_installed.rc == 0
+  systemd:
+    state: restarted
+    name: "{{ item }}"
+    enabled: yes
+  loop: "{{ services.common }}"
+  ignore_errors: yes
+
+- name: EDIT RSYSLOG 
+  #when: keberos_installed.rc == 1 and realm_installed.rc == 1
+  lineinfile:
+    path: /etc/rsyslog.conf
+    state: present
+    line: "{{ item }}"
+  loop: "{{ dc.graylog }}"
+
+- name: RESTART RSYSLOG SERVICE
+  #when: keberos_installed.rc == 1
+  systemd:
+    name: rsyslog
+    state: restarted
+    enabled: yes
+
+- name: CREAR USUARIO UXXI
+  user:
+    name: "{{ dc.uxxi.useru }}"
+    shell: /bin/bash
+    state: present
+    update_password: on_create
+    password: "{{ dc.uxxi.passu | password_hash('sha512') }}"
+
+- name: CREAR USUARIO UXXIDB
+  user:
+    name: "{{ dc.uxxidb.useru }}"
+    shell: /bin/bash
+    state: present
+    update_password: on_create
+    password: "{{ dc.uxxidb.passu | password_hash('sha512') }}"
+
+- name: HABILITAR UXXI SAMBA
+  when: samba_installed.rc == 0
+  shell: "(echo {{ dc.uxxi.passu }}; echo {{ dc.uxxi.passu }}) | smbpasswd -a uxxi"
+  #shell: (echo "xxxxxx"; echo "xxxxx") | smbpasswd -a uxxi
+
+- name: HABILITAR UXXIDB SAMBA
+  when: samba_installed.rc == 0
+  shell: "(echo {{ dc.uxxidb.passu }}; echo {{ dc.uxxidb.passu }}) | smbpasswd -a uxxidb"
+  #shell: (echo "xxxxxx"; echo "xxxxx") | smbpasswd -a uxxi
+
+- name: CREAR USUARIO STAIL
+  user:
+    name: "{{ dc.stail.user }}"
+    shell: /bin/bash
+    state: present
+    update_password: on_create
+    password: "{{ dc.stail.pass | password_hash('sha512') }}"
+  register: user_stail
+
+#- name: STAIL PERMISOS ROOT
+#  when: user_stail.rc == 1
+#  shell: usermod -u 0 -g 0 -o stail 
+#  ignore_errors: yes
+
+
+- lineinfile:
+    path: /etc/selinux/config
+    regexp: '^SELINUX='
+    line: 'SELINUX=disabled'  
+  
+
+- name: SERVER ADs
+  shell: netstat -putona | grep 636
+  ignore_errors: yes
+  register: netstat
+  
+
+- debug: msg="{{netstat.stdout_lines}}"
+
+
+
+
