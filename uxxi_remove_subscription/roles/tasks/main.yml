@@ -35,14 +35,26 @@
 - name: subscription-manager remove
   when: sub_installed.rc == 0
   shell: subscription-manager remove --all
+  register: remove
+  ignore_errors: yes
+
+- debug: msg="{{remove.stdout_lines}}"
 
 - name: subscription-manager unregister
   when: sub_installed.rc == 0
   shell:  subscription-manager unregister
+  register: unregister
+  ignore_errors: yes
+
+- debug: msg="{{unregister.stderr_lines}}"
 
 - name: subscription-manager clean
   when: sub_installed.rc == 0
   shell: subscription-manager clean
+  register: clean
+  ignore_errors: yes
+
+- debug: msg="{{clean.stdout_lines}}"
 
 - name: borrar cahce de yum
   when: sub_installed.rc == 0
@@ -56,6 +68,12 @@
   when: sub_installed.rc == 0
   shell: yum clean metadata
 
+- name: yum makecache msg
+  when: sub_installed.rc == 0
+  debug:
+    msg:
+      - '- Tarda unos minutos yum makecache'
+
 - name: yum makecache
   when: sub_installed.rc == 0
   shell: yum makecache
@@ -64,7 +82,15 @@
   when: sub_installed.rc == 0
   shell: yum repolist all
   register: netstat
-  
+
 - debug: msg="{{netstat.stdout_lines}}"
+
+- name: Upgrade all packages
+  yum:
+    name: sudo
+    state: latest
+  register: update
+
+#- debug: msg="{{update.stdout_lines}}"
 
 
