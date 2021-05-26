@@ -1,0 +1,13 @@
+---
+
+- name: restart goferd
+  service:
+    name: goferd
+    enabled: yes
+    state: restarted
+
+- name: restart puppet
+  service:
+    name: puppet
+    enabled: yes
+    state: restarted

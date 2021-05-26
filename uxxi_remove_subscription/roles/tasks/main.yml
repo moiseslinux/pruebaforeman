@@ -1,0 +1,70 @@
+---
+- name: Gather packages
+  package_facts:
+    manager: auto
+  ignore_errors: yes
+
+- name: MENSAJE
+  debug:
+    msg:
+      - '- COMPROBAR SI subscription-manager ESTA INSTALADO'
+
+- name: check if subscription-manager is installed
+  shell:  rpm -qa | grep subscription-manager
+  register: sub_installed
+  ignore_errors: True
+  check_mode: False
+  changed_when: False
+
+- name: subscription-manager IS INSTALLED
+  debug:
+    msg: "subscription-manager is installed"
+  when: sub_installed.rc == 0
+
+- name: subscription-manager NOT INSTALLED
+  debug:
+    msg: "subscription-manager not installed"
+  when: sub_installed.rc == 1
+
+- name: MENSAJE
+  when: sub_installed.rc == 1
+  debug:
+    msg:
+      - '- subscription-manager NO ESTA INSTALADO NO SE PUEDE ELMINAR DEL REGISTRO'
+
+- name: subscription-manager remove
+  when: sub_installed.rc == 0
+  shell: subscription-manager remove --all
+
+- name: subscription-manager unregister
+  when: sub_installed.rc == 0
+  shell:  subscription-manager unregister
+
+- name: subscription-manager clean
+  when: sub_installed.rc == 0
+  shell: subscription-manager clean
+
+- name: borrar cahce de yum
+  when: sub_installed.rc == 0
+  shell: rm -rf /var/cache/yum/*
+
+- name: yum clean all
+  when: sub_installed.rc == 0
+  shell: yum clean all
+
+- name: yum clean metadato
+  when: sub_installed.rc == 0
+  shell: yum clean metadata
+
+- name: yum makecache
+  when: sub_installed.rc == 0
+  shell: yum makecache
+
+- name: yum repolist all
+  when: sub_installed.rc == 0
+  shell: yum repolist all
+  register: netstat
+  
+- debug: msg="{{netstat.stdout_lines}}"
+
+
