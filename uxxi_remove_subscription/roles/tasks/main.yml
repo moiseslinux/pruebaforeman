@@ -81,9 +81,9 @@
 - name: yum repolist all
   when: sub_installed.rc == 0
   shell: yum repolist all
-  register: netstat
+  register: repolist
 
-- debug: msg="{{netstat.stdout_lines}}"
+- debug: msg="{{repolist.stdout_lines}}"
 
 - name: Upgrade all packages
   yum:
