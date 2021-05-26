@@ -93,4 +93,65 @@
 
 #- debug: msg="{{update.stdout_lines}}"
 
+##################################################
+############ Config Repo #########################
 
+
+- name: EDIT REPO ORACLE LINUX 7
+  when: ansible_distribution == 'OracleLinux' and ansible_distribution_major_version >= '7' and ansible_distribution_major_version < '8'
+  copy:
+    src: templates/oracle-linux-ol7.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  tags:
+    - ol7
+
+- name: EDIT REPO ORACLE LINUX 8
+  when: ansible_distribution == 'OracleLinux' and ansible_distribution_major_version >= '8' and ansible_distribution_major_version < '9'
+  copy:
+    src: templates/oracle-linux-ol8.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  tags:
+    - ol8
+
+- name: EDIT REPO CENTOS 7
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version >= '7' and ansible_distribution_major_version < '8'
+  copy:
+    src: templates/CentOS-Base.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  tags:
+    - c7
+
+- name: EDIT REPO CENTOS 8
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version >= '8' and ansible_distribution_major_version < '9'
+  copy:
+    src: "{{ item }}"
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  with_items:
+    - templates/CentOS-Base8.repo
+    - templates/CentOS-Extras8.repo
+    - templates/CentOS-AppStream8.repo
+  tags:
+    - c8
+  register: C8
+
+- name: yum repolist all
+  shell: yum repolist all
+  register: repolist2
+
+- debug: msg="{{repolist2.stdout_lines}}"
