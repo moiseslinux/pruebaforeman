@@ -1,0 +1,73 @@
+---
+
+############# seu
+- name: comprueba que el usuario existe seu
+  command: id seu
+  register: seu
+  ignore_errors: yes
+
+- debug: msg="usuario existe {{ seu.stdout }}"
+  
+- name: edit ssh user 
+  lineinfile: 
+    path: /etc/ssh/sshd_config
+    insertafter: AuthorizedKeysFile 
+    line: 'AllowGroups seu '
+    backup: yes 
+  when: seu.rc == 0
+
+########### ubuntu
+- name: comprueba que el usuario existe ubuntu
+  command: id ubuntu
+  register: ubuntu
+  ignore_errors: yes
+  
+
+- name: msg
+  debug: 
+    msg: "usuario existe {{ ubuntu.stdout }}"
+  when: ubuntu.rc == 0
+  
+
+- name: msg
+  debug: 
+    msg: "usuario NO existe {{ ubuntu.stdout }}"
+  when: ubuntu.rc == 1
+  
+
+- name: edit ssh ubuntu
+  lineinfile: 
+    path: /etc/ssh/sshd_config
+    insertafter: AuthorizedKeysFile 
+    line: 'AllowGroups ubuntu '
+    backup: yes 
+  when: ubuntu.rc == 0
+
+####################ec2-user
+- name: comprueba que el usuario existe ec2-user
+  command: id ec2-user
+  register: ec2user
+  ignore_errors: yes
+  
+
+- name: msg ec2-user
+  debug: 
+    msg: "usuario existe {{ ec2user.stdout }}"
+  when: ec2user.rc == 0
+  
+
+- name: msg NO ec2-user
+  debug: 
+    msg: "usuario NO existe {{ ec2user.stdout }}"
+  when: ec2user.rc == 1
+  
+- name: edit ssh ec2-user
+  lineinfile: 
+    path: /etc/ssh/sshd_config
+    insertafter: AuthorizedKeysFile 
+    line: 'AllowGroups ec2-user '
+    backup: yes 
+  when: ec2user.rc == 0
+#
+
+     
