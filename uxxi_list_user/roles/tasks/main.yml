@@ -1,0 +1,13 @@
+---
+
+- name: list user
+  shell:   awk -F':' '{print $1}' /etc/passwd
+  register: user
+
+- local_action: copy content={{ user.stdout_lines }} dest=/root/lista-user.txt
+
+
+#
+
+
+
